@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GestiónRenta — Panel de Asesoría</title>
+<style>
+:root{
+  --bg:#F9F8F5;--card:#fff;--bg2:#F2F1EE;--bg3:#E8E7E3;
+  --brd:rgba(0,0,0,.09);--brd2:rgba(0,0,0,.16);
+  --txt:#1A1A1A;--txt2:#5C5C5C;--txt3:#999;
+  --nv:#1E2A3A;--nvd:#141F2D;--gd:#C8973A;--glt:#E0B055;
+  --em:#10B981;--emlt:#D1FAE5;--emdk:#065F46;
+  --danger:#DC2626;--warn:#D97706;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--txt);min-height:100vh}
+/* ─ LAYOUT ─ */
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px}
+.tnav{background:var(--nv);border-radius:12px 12px 0 0;display:flex;align-items:stretch;padding:0 16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:8px;padding:0 14px 0 0;border-right:1px solid rgba(255,255,255,.12);margin-right:6px;min-height:46px;flex-shrink:0}
+.bico{width:26px;height:26px;background:var(--gd);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--nv)}
+.bname{font-size:12px;font-weight:500;color:#fff;white-space:nowrap}
+.byear{font-size:10px;color:rgba(255,255,255,.45);white-space:nowrap}
+.ntab{padding:0 12px;border:none;background:none;font-size:12px;color:rgba(255,255,255,.5);cursor:pointer;border-bottom:2px solid transparent;font-family:inherit;min-height:46px;transition:all .15s;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis}
+.ntab:hover{color:rgba(255,255,255,.85)}.ntab.on{color:#fff;border-bottom-color:var(--gd)}
+.nspc{flex:1}
+.addbtn{padding:6px 12px;background:var(--gd);color:var(--nv);border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;align-self:center;flex-shrink:0}
+.addbtn:hover{background:var(--glt)}
+.cnt{background:var(--bg);border:0.5px solid var(--brd);border-top:none;border-radius:0 0 12px 12px;padding:20px;min-height:500px}
+/* ─ CARDS ─ */
+.card{background:var(--card);border:0.5px solid var(--brd);border-radius:10px;padding:16px}
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px}
+.sc{background:var(--bg2);border-radius:8px;padding:13px}
+.scl{font-size:11px;color:var(--txt2);margin-bottom:3px}
+.scv{font-size:22px;font-weight:500;color:var(--txt)}
+.cg{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:11px}
+.cc{background:var(--card);border:0.5px solid var(--brd);border-radius:10px;padding:13px;cursor:pointer;transition:border-color .15s}
+.cc:hover{border-color:var(--gd)}
+.av{width:34px;height:34px;border-radius:50%;background:var(--nv);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--gd);flex-shrink:0}
+/* ─ PROGRESS ─ */
+.pt{height:4px;background:var(--bg3);border-radius:2px;flex:1}
+.pf{height:4px;border-radius:2px;transition:width .4s ease}.pf-g{background:var(--gd)}.pf-e{background:var(--em)}
+/* ─ BADGES ─ */
+.bdg{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:500}
+.bdg::before{content:'';width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.b-p{background:#FEF3C7;color:#92400E}.b-p::before{background:#F59E0B}
+.b-e{background:#DBEAFE;color:#1E40AF}.b-e::before{background:#3B82F6}
+.b-c{background:var(--emlt);color:var(--emdk)}.b-c::before{background:var(--em)}
+.b-pr{background:#EDE9FE;color:#4C1D95}.b-pr::before{background:#8B5CF6}
+/* ─ TABLE ─ */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:8px 13px;color:var(--txt2);font-weight:500;border-bottom:0.5px solid var(--brd);background:var(--bg2);font-size:11px;white-space:nowrap}
+td{padding:10px 13px;border-bottom:0.5px solid var(--brd);color:var(--txt);vertical-align:middle}
+tr:hover td{background:var(--bg2);cursor:pointer}
+/* ─ DETAIL LAYOUT ─ */
+.dl{display:grid;grid-template-columns:190px 1fr;gap:13px;align-items:start}
+@media(max-width:640px){.dl{grid-template-columns:1fr}}
+.clist{display:flex;flex-direction:column;gap:2px}
+.cbtn{display:flex;align-items:center;gap:6px;padding:7px 9px;border-radius:7px;border:none;background:none;cursor:pointer;width:100%;text-align:left;font-size:11px;color:var(--txt2);font-family:inherit;transition:background .1s}
+.cbtn:hover{background:var(--bg2)}.cbtn.on{background:var(--nv);color:#fff}.cbtn.on .cct{color:rgba(255,255,255,.5)}
+.cct{margin-left:auto;font-size:10px;color:var(--txt3)}
+/* ─ CHECKLIST ITEMS ─ */
+.chi{display:flex;align-items:flex-start;gap:10px;padding:10px 11px;border-radius:7px;border:0.5px solid var(--brd);cursor:pointer;transition:all .12s;margin-bottom:6px}
+.chi:hover{border-color:var(--brd2);background:var(--bg2)}
+.chi.chk{background:#F0FDF4;border-color:#A7F3D0}
+.chi.warn{background:#FFFBEB;border-color:#FCD34D}
+.chbox{width:16px;height:16px;border-radius:3px;border:1.5px solid var(--brd2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;transition:all .12s}
+.chbox.chk{background:var(--em);border-color:var(--em)}
+.cht{font-size:12px;font-weight:500;color:var(--txt)}
+.cht.done{text-decoration:line-through;color:var(--txt3)}
+.chd{font-size:11px;color:var(--txt2);margin-top:1px;line-height:1.4}
+/* ─ FORMS ─ */
+.fg{margin-bottom:11px}
+.fl{display:block;font-size:11px;font-weight:500;color:var(--txt2);margin-bottom:4px}
+.fi,.fs,.fta{width:100%;padding:7px 9px;border:0.5px solid var(--brd2);border-radius:7px;background:var(--card);font-size:12px;color:var(--txt);font-family:inherit;outline:none}
+.fi:focus,.fs:focus,.fta:focus{border-color:var(--gd);box-shadow:0 0 0 2px rgba(200,151,58,.15)}
+.fta{resize:vertical}
+.bp{background:var(--nv);color:#fff;border:none;padding:8px 15px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit}
+.bp:hover{background:var(--nvd)}
+.bs{background:none;color:var(--txt2);border:0.5px solid var(--brd2);padding:8px 15px;border-radius:7px;font-size:12px;cursor:pointer;font-family:inherit}
+.bs:hover{background:var(--bg2)}
+.btn-sm{padding:4px 9px;border-radius:5px;border:0.5px solid var(--brd2);background:none;font-size:11px;color:var(--txt2);cursor:pointer;font-family:inherit}
+.btn-sm:hover{background:var(--bg2)}
+.btn-danger{color:var(--danger);border-color:rgba(220,38,38,.2)}
+.btn-danger:hover{background:#FEF2F2}
+/* ─ MODAL ─ */
+.mov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:flex-start;justify-content:center;padding-top:40px}
+.mov.open{display:flex}
+.mcard{background:var(--card);border-radius:12px;width:100%;max-width:420px;padding:22px;margin:0 14px;border:0.5px solid var(--brd);max-height:85vh;overflow-y:auto}
+/* ─ TAGS ─ */
+.ntag{display:inline-flex;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#DBEAFE;color:#1E40AF;margin-left:5px;vertical-align:middle}
+.wtag{display:inline-flex;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#FEF3C7;color:#92400E;margin-left:5px;vertical-align:middle}
+/* ─ CUSTOM ITEMS FORM ─ */
+.custom-form{border:1px dashed var(--brd2);border-radius:8px;padding:12px;margin-top:8px;background:var(--bg2)}
+.custom-form-title{font-size:11px;font-weight:500;color:var(--txt2);margin-bottom:8px}
+/* ─ MISC ─ */
+.empty{text-align:center;padding:50px 20px;color:var(--txt2)}
+.bkbtn{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--txt2);cursor:pointer;border:none;background:none;padding:0;margin-bottom:12px;font-family:inherit}
+.bkbtn:hover{color:var(--txt)}
+.sh{font-size:12px;font-weight:500;color:var(--txt);margin-bottom:10px}
+.abt{border:none;background:none;cursor:pointer;font-size:11px;color:var(--txt2);padding:2px 5px;font-family:inherit}
+.abt:hover{color:var(--txt)}
+.delbtn{border:none;background:none;cursor:pointer;font-size:11px;color:var(--danger);padding:2px 5px;font-family:inherit}
+.del-item{border:none;background:none;cursor:pointer;color:var(--danger);font-size:14px;padding:0 3px;line-height:1;flex-shrink:0;margin-top:1px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="app">
+    <nav class="tnav" id="tnav">
+      <div class="brand">
+        <div class="bico">GR</div>
+        <div><div class="bname">GestiónRenta</div><div class="byear">Campaña Renta 2025</div></div>
+      </div>
+      <button class="ntab on" id="tb-dash" onclick="nav('dash')">Dashboard</button>
+      <button class="ntab" id="tb-cli" onclick="nav('cli')">Clientes</button>
+      <div id="tb-cw"></div>
+      <div class="nspc"></div>
+      <button class="addbtn" onclick="openMod()">+ Nuevo cliente</button>
+    </nav>
+    <div class="cnt" id="cnt"></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="mov" id="mod" onclick="bgClk(event)">
+  <div class="mcard" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <span style="font-size:13px;font-weight:600;color:var(--txt)" id="mtit">Nuevo cliente</span>
+      <button onclick="closeMod()" style="border:none;background:none;font-size:18px;cursor:pointer;color:var(--txt2);line-height:1">&times;</button>
+    </div>
+    <div id="mbody"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  DATOS
+// ═══════════════════════════════════════════════════════
+const CCAA=[
+  {id:'and',n:'Andalucía',e:'🌻'},{id:'ara',n:'Aragón',e:'⚔️'},{id:'ast',n:'Asturias',e:'🌿'},
+  {id:'bal',n:'Baleares',e:'⛵'},{id:'can',n:'Canarias',e:'🌋'},{id:'ctb',n:'Cantabria',e:'🏔️'},
+  {id:'clm',n:'Castilla-La Mancha',e:'⚙️'},{id:'cyl',n:'Castilla y León',e:'🏰'},
+  {id:'cat',n:'Cataluña',e:'🌹'},{id:'val',n:'C. Valenciana',e:'🍊'},
+  {id:'ext',n:'Extremadura',e:'🦅'},{id:'gal',n:'Galicia',e:'🐚'},
+  {id:'rio',n:'La Rioja',e:'🍇'},{id:'mad',n:'Madrid',e:'🏛️'},
+  {id:'mur',n:'Murcia',e:'☀️'},{id:'nav',n:'Navarra (Foral)',e:'⚜️'},
+  {id:'vas',n:'País Vasco (Foral)',e:'🌊'},
+];
+const CATS=[
+  {id:'personales',l:'Datos Personales'},
+  {id:'trabajo',l:'Rendimientos del Trabajo'},
+  {id:'inmuebles',l:'Inmuebles y Alquileres'},
+  {id:'bancos',l:'Bancos e Inversiones'},
+  {id:'patrimonio',l:'Ganancias Patrimoniales'},
+  {id:'estatal',l:'Deducciones Estatales'},
+  {id:'autonomica',l:'Deducciones Autonómicas'},
+  {id:'extra',l:'Notas y docs. adicionales'},
+];
+const COM=[
+  // PERSONALES
+  {id:'dni',c:'personales',t:'DNI/NIE titular y cónyuge (si aplica)',d:'Vigente. Incluir fecha de caducidad.'},
+  {id:'lfam',c:'personales',t:'Libro de familia o certificado matrimonio/nacimiento',d:'Para hijos menores de 25 años o acreditar estado civil.'},
+  {id:'disc',c:'personales',t:'Certificado de discapacidad — titular (si aplica)',d:'Grado ≥33%. Emitido por organismo competente autonómico.'},
+  {id:'disc2',c:'personales',t:'Certificado de discapacidad del cónyuge (si aplica)',d:'Deducción estatal 1.200€/año si cónyuge con discapacidad y sin rentas >8.000€.'},
+  {id:'fnum',c:'personales',t:'Título de Familia Numerosa o Monoparental',d:'Vigente a 31 de diciembre del ejercicio.'},
+  {id:'depend',c:'personales',t:'Resolución de grado de dependencia (si aplica)',d:'Para ascendientes o descendientes dependientes. Emitida por organismo autonómico.'},
+  // TRABAJO
+  {id:'cemp',c:'trabajo',t:'Certificado de retenciones de la empresa',d:'De todos los pagadores del año. RRHH lo emite obligatoriamente.'},
+  {id:'sepe',c:'trabajo',t:'Certificado SEPE — paro/ERTE (si aplica)',d:'Descargable en sede electrónica del SEPE con certificado digital.'},
+  {id:'sind',c:'trabajo',t:'Cuota sindical / Colegio profesional (si colegiación obligatoria)',d:'Justificante de pago. Reducción en gastos deducibles del trabajo.'},
+  {id:'cotss',c:'trabajo',t:'Justificante cotizaciones SS (deducción maternidad)',d:'Para madres con hijos menores de 3 años que coticen. Deducción 1.200€ + hasta 1.000€ por guardería.'},
+  // INMUEBLES
+  {id:'ibi',c:'inmuebles',t:'Referencia catastral de la vivienda habitual',d:'Aparece en el recibo del IBI. Necesaria para imputación de rentas.'},
+  {id:'ialq',c:'inmuebles',t:'Relación de ingresos por alquiler (si arrendador)',d:'Suma anual de todas las rentas cobradas. NIF de arrendatarios.'},
+  {id:'galq',c:'inmuebles',t:'Facturas gastos deducibles del alquiler',d:'IBI, comunidad, seguros, intereses hipoteca, amortización, reparaciones.'},
+  // BANCOS
+  {id:'bfis',c:'bancos',t:'Información fiscal de bancos / brokers',d:'Intereses de cuentas, dividendos. Descargable en banca online (sección fiscal).'},
+  {id:'resc',c:'bancos',t:'Rescates de seguros / PIAS / planes de ahorro',d:'Solo si has realizado rescates o cobrado rentas vitalicias.'},
+  // PATRIMONIO
+  {id:'escr',c:'patrimonio',t:'Escrituras de compra y venta (si vendiste inmueble)',d:'Ambas escrituras + gastos notaría, plusvalía municipal, comisión inmobiliaria.'},
+  {id:'brok',c:'patrimonio',t:'Informe anual venta acciones/fondos del broker',d:'Con precios de compra y venta de cada operación. Incluye fondos de inversión.'},
+  {id:'crip',c:'patrimonio',t:'Informe operaciones con criptomonedas (modelo 721)',d:'CSV/Excel de exchanges. Incluye permutaciones entre criptos. Obligatorio si >50.000€.'},
+  {id:'subv',c:'patrimonio',t:'Ayudas públicas cobradas (MOVES, Bono Alquiler, DANA…)',d:'Resolución de concesión + justificante bancario. Tributan como ganancia patrimonial.'},
+  // ESTATALES
+  {id:'hip',c:'estatal',t:'Recibo hipoteca vivienda habitual (compra anterior al 01/01/2013)',d:'Solo para compras antes del 1 enero 2013. Máx. deducción 9.040€ base / 15%.'},
+  {id:'ong',c:'estatal',t:'Certificado donativos a ONG / fundaciones',d:'Con tu NIF. Deducción 80% primeros 250€ y 40% resto. (Ley Mecenazgo).'},
+  {id:'pen',c:'estatal',t:'Aportaciones a Planes de Pensiones',d:'Certificado del banco con aportaciones del año. Límite 1.500€/año (o 4.250€ con aportación empresa).'},
+  {id:'mat',c:'estatal',t:'Facturas guardería + justificante cotización SS (deducción maternidad)',d:'Madres con hijos <3 años que trabajen y coticen. Hasta 1.000€ adicionales/año por guardería.'},
+  {id:'gfam',c:'estatal',t:'Título Familia Numerosa vigente (deducción estatal)',d:'General: 1.200€. Especial (≥5 hijos o con discapacidad): 2.400€.'},
+  {id:'veh',c:'estatal',t:'Factura adquisición vehículo eléctrico enchufable (PHEV/BEV)',d:'Deducción 15%, máx. base 20.000€. Requiere matrícula o pago ≥25% en 2025.'},
+  {id:'rec',c:'estatal',t:'Factura instalación punto de recarga vehículo eléctrico',d:'Deducción 15%, máx. base 4.000€. Compatible con deducción del vehículo.'},
+  {id:'ef1',c:'estatal',t:'Certificado energético PREVIO y POSTERIOR + facturas obras eficiencia',d:'Deducción 20-40% según reducción de demanda energética. Máx. base 5.000-15.000€ según tipo de mejora.'},
+  {id:'inv',c:'estatal',t:'Certificado empresa nueva creación + escritura participación',d:'Deducción 30% inversión. Máx. base 60.000€. Empresa debe tener ≤5 años de constitución.'},
+];
+const AUT={
+  and:[
+    {id:'and1',t:'Contrato alquiler + recibos (vivienda habitual — inquilino)',d:'Base imponible ≤19.000€ indiv./24.000€ conjunta. Deducción 15%, máx. 500€.'},
+    {id:'and2',t:'Escritura primera vivienda (jóvenes ≤35 años)',d:'Adquisición vivienda habitual en Andalucía. ITP pagado acreditado.'},
+    {id:'and3',t:'Resolución acogimiento familiar de menores',d:'Deducción específica por acogimiento no remunerado.'},
+    {id:'and4',t:'Facturas gastos de adopción (nacional o internacional)',d:'Gastos satisfechos en el proceso de adopción. Con justificantes.'},
+  ],
+  ara:[
+    {id:'ara1',t:'Certificado nacimiento/adopción (deducción 500-750€ por hijo)',d:'500€ 1er hijo, 600€ 2º, 750€ 3º o más. Límite base liquidable 35.000€ indiv.'},
+    {id:'ara2',t:'Contrato alquiler + recibos vivienda habitual (≤36 años)',d:'Menores de 36 años. Base imponible ≤15.000€. Máx. 150€.'},
+    {id:'ara3',t:'Resolución acogimiento + justificante gastos persona dependiente',d:'Ascendientes mayores de 75 años o con discapacidad a cargo.'},
+    {id:'ara4',t:'Facturas gastos adopción internacional',d:'Deducción específica por gastos del proceso de adopción internacional.'},
+  ],
+  ast:[
+    {id:'ast1',t:'Resolución acogimiento familiar (menores o mayores dependientes)',d:'Acogimiento no remunerado de menores o personas mayores.'},
+    {id:'ast2',t:'Contrato alquiler + recibos vivienda habitual',d:'Menores de 35 años o familia numerosa. Límite base imponible 25.000€.'},
+    {id:'ast3',t:'Certificado traslado residencia a Asturias por motivos laborales',d:'Deducción para contribuyentes que trasladen domicilio fiscal al Principado.'},
+  ],
+  bal:[
+    {id:'bal1',t:'Facturas adquisición libros de texto',d:'Primaria, Secundaria y FP. Requiere límite de renta.'},
+    {id:'bal2',t:'Contrato alquiler + recibos vivienda habitual',d:'Menores de 36 años o familia numerosa. Máx. 400€.'},
+    {id:'bal3',t:'Facturas instalación energías renovables / placas solares',d:'Deducción por instalación de energías renovables en vivienda habitual.'},
+  ],
+  can:[
+    {id:'can1',t:'Facturas gastos estudios universitarios (fuera de la isla)',d:'Hijo o contribuyente estudiando en otra isla o en el continente.'},
+    {id:'can2',t:'Contrato alquiler + recibos vivienda habitual',d:'Límite de base imponible aplicable. Deducción 15%, máx. 600€.'},
+    {id:'can3',t:'Certificado donativos a fundaciones canarias reconocidas',d:'Entidades inscritas en el Gobierno de Canarias.'},
+  ],
+  ctb:[
+    {id:'ctb1',t:'Contrato alquiler + recibos vivienda habitual (≤35 años o fam. num.)',d:'Menores de 35 años o familia numerosa. Máx. 300€.'},
+    {id:'ctb2',t:'Certificado cuidado familiar dependiente (ascendiente ≥65 o dependiente)',d:'Gastos de asistencia acreditados con facturas o resolución de dependencia.'},
+    {id:'ctb3',t:'Documentación traslado de residencia a Cantabria por trabajo',d:'Deducción para nuevos residentes en Cantabria por motivos laborales.'},
+  ],
+  clm:[
+    {id:'clm1',t:'Contrato alquiler + recibos vivienda habitual',d:'Límite de base imponible. Máx. 300€.'},
+    {id:'clm2',t:'Título Familia Numerosa + justificantes gastos autonómicos',d:'Deducción adicional autonómica Castilla-La Mancha.'},
+    {id:'clm3',t:'⚠ Documentación daños DANA oct. 2024 (si zona afectada CLM)',d:'Deducciones especiales aprobadas para zonas afectadas. Consultar normativa.',w:true},
+  ],
+  cyl:[
+    {id:'cyl1',t:'Certificado partos múltiples (deducción 1.010€ por hijo)',d:'1.010€ por cada hijo de parto múltiple en el ejercicio.'},
+    {id:'cyl2',t:'Facturas adquisición libros de texto',d:'Enseñanza obligatoria. Con límite de renta.'},
+    {id:'cyl3',t:'Contrato alquiler + recibos vivienda habitual (≤36 años)',d:'Menores de 36 años. Máx. 459€.'},
+    {id:'cyl4',t:'Facturas rehabilitación vivienda en núcleo rural',d:'Rehabilitación de vivienda habitual en núcleos rurales de Castilla y León.'},
+  ],
+  cat:[
+    {id:'cat1',t:'Contrato alquiler + recibos vivienda habitual',d:'Base imponible total ≤20.000€. Máx. 300€.'},
+    {id:'cat2',t:'Sentencia custodia compartida de hijos en común',d:'Deducción específica por custodia compartida. Documento judicial necesario.'},
+    {id:'cat3',t:'Certificado energético previo + facturas rehabilitación vivienda',d:'Obras de mejora energética, accesibilidad o habitabilidad.'},
+    {id:'cat4',t:'Certificado donativos a entidades fomento lengua catalana',d:'Entidades reconocidas por la Generalitat de Catalunya.'},
+    {id:'cat5',t:'Facturas guardería / centros 0-3 años (hijos menores de 3 años)',d:'Deducción por custodia no ocasional en centros de educación infantil.'},
+  ],
+  val:[
+    {id:'val0',t:'⚠ DANA 2024: Facturas reparación/rehabilitación vivienda habitual dañada',d:'NUEVA 2025. Deducción 100% de gastos de reparación por daños DANA oct. 2024. Requiere facturas y acreditación de daños en zona afectada.',w:true},
+    {id:'val1',t:'Contrato alquiler + NIF arrendador + ref. catastral (inquilino)',d:'Máx. 700€. NIF del propietario imprescindible. Límite base liquidable ≤25.000€ indiv./40.000€ conjunta.'},
+    {id:'val2',t:'Facturas deporte/gimnasio/clubes deportivos/federaciones',d:'30% general; 50% si ≥65 años o disc. ≥33%; 100% si ≥75 años o disc. ≥65%. Máx. 150€. Base ≤60.000€.'},
+    {id:'val3',t:'Facturas médicas nominales (dentista, óptica, salud mental, enf. raras)',d:'Solo facturas a nombre del contribuyente o familiar. NO valen tickets de farmacia genéricos.'},
+    {id:'val4',t:'Facturas material escolar (Primaria/Secundaria/FP/Bachiller)',d:'Excluye libros de texto subvencionados. Incluye uniformes si son obligatorios en el centro.'},
+    {id:'val5',t:'Facturas guardería / escuela infantil (hijos 0-3 años)',d:'Ambos padres trabajando. Base liquidable ≤25.000€ indiv. Facturas a nombre del contribuyente.'},
+    {id:'val6',t:'Cotizaciones SS empleada/o hogar + contrato laboral formalizado',d:'Con hijos <5 años o dependientes a cargo. Contrato laboral obligatorio.'},
+    {id:'val7',t:'Escritura primera vivienda habitual (≤35 años)',d:'5% de las cantidades invertidas. Límite base liquidable ≤25.000€ indiv./40.000€ conjunta.'},
+    {id:'val8',t:'Libro de familia (familias con 2 o más descendientes — 10% cuota)',d:'10% de cuota íntegra autonómica. Base ≤30.000€ indiv./47.000€ conjunta.'},
+    {id:'val9',t:'Facturas enseñanzas musicales (conservatorio o escuela autorizada)',d:'NUEVA 2025. Hasta 150€. Pago bancario obligatorio (NO efectivo).'},
+    {id:'val10',t:'Certificado médico enfermedad celíaca (si diagnóstico)',d:'NUEVA 2025. 100€ por persona diagnosticada. Base imponible ≤35.000€ indiv./45.000€ conjunta.'},
+    {id:'val11',t:'Factura adquisición vehículo eléctrico nuevo (Orden 5/2020)',d:'Deducción autonómica por compra de vehículo eléctrico en C. Valenciana.'},
+    {id:'val12',t:'Documentación nacimiento/adopción (600€ 1er hijo, más por siguientes)',d:'600€ 1er hijo; importe superior por 2º y 3º. Base ≤30.000€ indiv./47.000€ conjunta.'},
+  ],
+  ext:[
+    {id:'ext1',t:'Escritura primera vivienda habitual (jóvenes ≤35 años)',d:'Adquisición vivienda habitual en Extremadura. ITP pagado acreditado.'},
+    {id:'ext2',t:'Contrato alquiler + recibos vivienda habitual',d:'Con límites de base imponible aplicables en Extremadura.'},
+    {id:'ext3',t:'Documentación traslado residencia habitual a Extremadura',d:'Deducción para contribuyentes que trasladen su residencia a la comunidad.'},
+  ],
+  gal:[
+    {id:'gal1',t:'Contrato alquiler + recibos vivienda habitual (≤36 años o fam. num.)',d:'Máx. 300€. Menores de 36 años o familia numerosa.'},
+    {id:'gal2',t:'Resolución de acogimiento familiar',d:'Menores o personas mayores en riesgo de exclusión social.'},
+    {id:'gal3',t:'Certificado ayudas/subvenciones deportistas de alto nivel gallegos',d:'Deducción por ayudas recibidas por deportistas de alto nivel en Galicia.'},
+  ],
+  rio:[
+    {id:'rio1',t:'Contrato alquiler + recibos vivienda habitual (≤36 años)',d:'Menores de 36 años. Máx. 300€. Verificar si el municipio está en listado AEAT.'},
+    {id:'rio2',t:'Facturas guardería / escuela infantil (hijos 0-3 años)',d:'Con límite de base imponible. Municipios rurales pueden tener beneficio adicional.'},
+    {id:'rio3',t:'Facturas donaciones conservación Patrimonio Histórico de La Rioja',d:'Cantidades destinadas a investigación o conservación de bienes del patrimonio.'},
+    {id:'rio4',t:'Escritura adquisición/rehabilitación vivienda en pequeño municipio',d:'Lista de municipios incluida en el Anexo del Manual AEAT Renta 2025.'},
+  ],
+  mad:[
+    {id:'mad1',t:'Contrato alquiler + recibos vivienda habitual (≤35 años)',d:'Menores de 35 años. Base liquidable ≤25.620€ indiv. Máx. 1.000€.'},
+    {id:'mad2',t:'Facturas estudios de hijos (idiomas, clases de apoyo, refuerzo)',d:'Centros autorizados. Enseñanza obligatoria y bachillerato.'},
+    {id:'mad3',t:'Facturas gastos educativos (libros, material, uniformes)',d:'Máx. 1.000€/hijo. Enseñanza obligatoria y bachillerato.'},
+    {id:'mad4',t:'Certificado nacimiento/adopción (deducción autonómica Madrid)',d:'Deducción autonómica por nacimiento o adopción de hijos en la Comunidad de Madrid.'},
+    {id:'mad5',t:'Facturas obras conservación/mejora de la vivienda habitual',d:'Por obras de mejora de calidad, sostenibilidad y accesibilidad.'},
+  ],
+  mur:[
+    {id:'mur1',t:'Contrato alquiler + recibos vivienda habitual',d:'Límite de base imponible aplicable. Deducción 10-15%.'},
+    {id:'mur2',t:'Facturas guardería / centros educación infantil (≤3 años)',d:'Menores de 3 años. Máx. 1.000€.'},
+    {id:'mur3',t:'Certificado donaciones sangre u órganos (CARM / Banco de Sangre)',d:'Emitido por el Centro Regional de Hemodonación o la CARM.'},
+    {id:'mur4',t:'⚠ Documentación daños DANA oct. 2024 (si zona afectada Murcia)',d:'Algunas zonas de Murcia con afectación DANA. Verificar municipio y normativa.',w:true},
+  ],
+  nav:[{id:'nav1',t:'⚠ RÉGIMEN FORAL NAVARRA — Requiere especialista Hacienda Foral',d:'Navarra tiene su propio régimen tributario. Plazos, modelos y deducciones completamente diferentes al Territorio Común.',w:true}],
+  vas:[{id:'vas1',t:'⚠ RÉGIMEN FORAL PAÍS VASCO — Requiere especialista',d:'Álava, Guipúzcoa y Vizcaya tienen Haciendas Forales propias. Declaración totalmente diferente al Territorio Común.',w:true}],
+};
+const ST={pendiente:{l:'Pendiente',cls:'b-p'},en_proceso:{l:'En proceso',cls:'b-e'},completado:{l:'Completado',cls:'b-c'},presentado:{l:'Presentado',cls:'b-pr'}};
+
+// ═══════════════════════════════════════════════════════
+//  ESTADO
+// ═══════════════════════════════════════════════════════
+let clients=[],prog={},vw='dash',selC=null,selCat='personales',edId=null;
+
+// ═══════════════════════════════════════════════════════
+//  STORAGE (localStorage)
+// ═══════════════════════════════════════════════════════
+function loadAll(){
+  try{const r=localStorage.getItem('gr-clients');if(r)clients=JSON.parse(r);}catch(e){clients=[];}
+  for(const c of clients){
+    try{const r=localStorage.getItem('gr-p-'+c.id);prog[c.id]=new Set(r?JSON.parse(r):[]);}
+    catch(e){prog[c.id]=new Set();}
+  }
+}
+function svC(){try{localStorage.setItem('gr-clients',JSON.stringify(clients));}catch(e){}}
+function svP(cid){try{localStorage.setItem('gr-p-'+cid,JSON.stringify([...prog[cid]]));}catch(e){}}
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+const x=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function ccn(id){const c=CCAA.find(v=>v.id===id);return c?c.e+' '+c.n:id;}
+function items(cid){
+  const c=clients.find(v=>v.id===cid);if(!c)return[];
+  const auto=(AUT[c.ccaa]||[]).map(v=>({...v,c:'autonomica'}));
+  const custom=(c.customItems||[]).map(v=>({...v,c:'extra'}));
+  return[...COM,...auto,...custom];
+}
+function gp(cid){
+  const it=items(cid),pr=prog[cid]||new Set();
+  const n=it.filter(i=>pr.has(i.id)).length;
+  return{n,t:it.length,pct:it.length?Math.round(n/it.length*100):0};
+}
+function uid(p){return (p||'c')+Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+function pbar(pct){return`<div class="pt"><div class="pf ${pct===100?'pf-e':'pf-g'}" style="width:${pct}%"></div></div>`;}
+
+// ═══════════════════════════════════════════════════════
+//  NAVEGACIÓN
+// ═══════════════════════════════════════════════════════
+function nav(v,cid){vw=v;selC=cid||null;if(v!=='client')selCat='personales';uNav();rnd();}
+function uNav(){
+  ['dash','cli'].forEach(id=>{const el=document.getElementById('tb-'+id);if(el)el.classList.toggle('on',vw===id);});
+  const tw=document.getElementById('tb-cw');
+  if(selC){const c=clients.find(v=>v.id===selC);if(c)tw.innerHTML=`<button class="ntab on" onclick="nav('client','${c.id}')">${x(c.name)}</button>`;}
+  else tw.innerHTML='';
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER PRINCIPAL
+// ═══════════════════════════════════════════════════════
+function rnd(){
+  const el=document.getElementById('cnt');
+  if(vw==='dash')el.innerHTML=rDash();
+  else if(vw==='cli')el.innerHTML=rCli();
+  else if(vw==='client')el.innerHTML=rDet();
+}
+
+// ── DASHBOARD ─────────────────────────────────────────
+function rDash(){
+  const tot=clients.length,bys=s=>clients.filter(c=>c.status===s).length;
+  const avg=tot?Math.round(clients.reduce((a,c)=>a+gp(c.id).pct,0)/tot):0;
+  return`<div class="sg">
+    <div class="sc"><div class="scl">Total clientes</div><div class="scv">${tot}</div></div>
+    <div class="sc"><div class="scl">Pendientes</div><div class="scv">${bys('pendiente')}</div></div>
+    <div class="sc"><div class="scl">En proceso</div><div class="scv">${bys('en_proceso')}</div></div>
+    <div class="sc"><div class="scl">Presentadas</div><div class="scv">${bys('presentado')}</div></div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span style="font-size:12px;font-weight:500">Progreso medio de documentación</span>
+      <span style="font-size:19px;font-weight:600;color:var(--gd)">${avg}%</span>
+    </div>
+    ${pbar(avg)}
+    <div style="font-size:10px;color:var(--txt3);margin-top:5px">Basado en Manual AEAT Renta 2025 — Fuente: sede.agenciatributaria.gob.es</div>
+  </div>
+  <div class="sh">Clientes</div>
+  ${tot===0
+    ?`<div class="empty"><div style="font-size:2rem;margin-bottom:10px">◎</div><div style="font-size:13px;font-weight:500;margin-bottom:5px">Sin clientes todavía</div><div style="font-size:11px">Añade tu primer cliente con «+ Nuevo cliente»</div></div>`
+    :`<div class="cg">${clients.map(c=>{const p=gp(c.id),st=ST[c.status]||ST.pendiente;return`<div class="cc" onclick="nav('client','${c.id}')">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="av">${x(c.name[0])}</div>
+        <div><div style="font-size:12px;font-weight:500">${x(c.name)}</div><div style="font-size:10px;color:var(--txt2)">${x(c.nif)}</div></div>
+      </div>
+      <span class="bdg ${st.cls}">${st.l}</span>
+    </div>
+    <div style="font-size:10px;color:var(--txt2);margin-bottom:6px">${ccn(c.ccaa)}</div>
+    <div style="display:flex;align-items:center;gap:7px">${pbar(p.pct)}<span style="font-size:10px;color:var(--txt2);white-space:nowrap">${p.pct}% (${p.n}/${p.t})</span></div>
+  </div>`;}).join('')}</div>`}`;
+}
+
+// ── LISTA CLIENTES ────────────────────────────────────
+function rCli(){
+  if(!clients.length)return`<div class="empty"><div style="font-size:2rem;margin-bottom:10px">◎</div><div style="font-size:13px;font-weight:500;margin-bottom:5px">Sin clientes todavía</div><div style="font-size:11px">Añade clientes con «+ Nuevo cliente»</div></div>`;
+  return`<div class="card" style="padding:0;overflow:hidden"><div class="tbl-wrap"><table>
+    <thead><tr><th>Cliente</th><th>CCAA</th><th>Estado</th><th>Documentación</th><th></th></tr></thead>
+    <tbody>${clients.map(c=>{const p=gp(c.id),st=ST[c.status]||ST.pendiente;return`<tr onclick="nav('client','${c.id}')">
+      <td><div style="display:flex;align-items:center;gap:8px"><div class="av" style="width:30px;height:30px;font-size:11px">${x(c.name[0])}</div>
+        <div><div style="font-size:12px;font-weight:500">${x(c.name)}</div><div style="font-size:10px;color:var(--txt2)">${x(c.nif)}</div></div></div></td>
+      <td style="font-size:11px">${ccn(c.ccaa)}</td>
+      <td><span class="bdg ${st.cls}">${st.l}</span></td>
+      <td><div style="display:flex;align-items:center;gap:6px">
+        <div class="pt" style="width:70px;flex:none"><div class="pf ${p.pct===100?'pf-e':'pf-g'}" style="width:${p.pct}%"></div></div>
+        <span style="font-size:10px;color:var(--txt2)">${p.pct}%</span></div></td>
+      <td onclick="event.stopPropagation()">
+        <div style="display:flex;gap:5px;justify-content:flex-end">
+          <button class="abt" onclick="openMod('${c.id}')">editar</button>
+          <button class="delbtn" onclick="delC('${c.id}')">borrar</button>
+        </div></td>
+    </tr>`;}).join('')}</tbody>
+  </table></div></div>`;
+}
+
+// ── DETALLE CLIENTE ───────────────────────────────────
+function rDet(){
+  const c=clients.find(v=>v.id===selC);if(!c)return'';
+  const all=items(selC),pr=prog[selC]||new Set(),p=gp(selC);
+  const ci=all.filter(i=>i.c===selCat);
+  return`
+  <button class="bkbtn" onclick="nav('cli')">← Volver a clientes</button>
+  <div class="card" style="margin-bottom:13px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:11px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="av" style="width:42px;height:42px;font-size:16px">${x(c.name[0])}</div>
+        <div>
+          <div style="font-size:14px;font-weight:600">${x(c.name)}</div>
+          <div style="font-size:11px;color:var(--txt2)">${x(c.nif)}${c.email?' · '+x(c.email):''}</div>
+          <div style="font-size:11px;color:var(--txt2)">${ccn(c.ccaa)}</div>
+          ${c.notes?`<div style="font-size:10px;color:var(--txt2);font-style:italic;margin-top:2px">${x(c.notes)}</div>`:''}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:13px">
+        <div style="text-align:right">
+          <div style="font-size:22px;font-weight:600;color:var(--gd)">${p.pct}%</div>
+          <div style="font-size:10px;color:var(--txt2)">${p.n}/${p.t} docs</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--txt2);margin-bottom:3px">Estado</div>
+          <select onchange="updSt('${c.id}',this.value)" class="fs" style="padding:5px 8px;font-size:11px;width:auto">
+            ${Object.entries(ST).map(([k,v])=>`<option value="${k}"${c.status===k?' selected':''}>${v.l}</option>`).join('')}
+          </select>
+        </div>
+        <button class="abt" onclick="openMod('${c.id}')">editar</button>
+      </div>
+    </div>
+    <div style="margin-top:11px">${pbar(p.pct)}</div>
+  </div>
+
+  <div class="dl">
+    <div class="card clist">
+      ${CATS.map(cat=>{
+        const ci2=all.filter(i=>i.c===cat.id);
+        const cc=ci2.filter(i=>pr.has(i.id)).length;
+        const done=ci2.length>0&&cc===ci2.length;
+        return`<button class="cbtn${selCat===cat.id?' on':''}" onclick="sCat('${cat.id}')">
+          <span style="flex:1">${done?'✓ ':''}${cat.l}</span>
+          <span class="cct">${cc}/${ci2.length}</span>
+        </button>`;}).join('')}
+    </div>
+
+    <div class="card">
+      <div style="font-size:13px;font-weight:600;margin-bottom:13px">${CATS.find(v=>v.id===selCat)?.l}</div>
+      ${selCat==='extra'?rExtra(c,pr):rChecklist(ci,pr,c.id)}
+    </div>
+  </div>`;
+}
+
+function rChecklist(ci,pr,cid){
+  if(!ci.length)return`<p style="font-size:12px;color:var(--txt2)">No hay documentos para esta categoría y comunidad autónoma.</p>`;
+  return ci.map(item=>{
+    const chk=pr.has(item.id);
+    return`<div class="chi${chk?' chk':''}${item.w&&!chk?' warn':''}" onclick="togI('${cid}','${item.id}')">
+      <div class="chbox${chk?' chk':''}">${chk?'✓':''}</div>
+      <div style="flex:1">
+        <div class="cht${chk?' done':''}">${x(item.t)}${item.w&&!chk?`<span class="wtag">Atención</span>`:''}</div>
+        <div class="chd">${x(item.d)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function rExtra(c,pr){
+  const custom=c.customItems||[];
+  const items_html=custom.map(item=>{
+    const chk=pr.has(item.id);
+    return`<div class="chi${chk?' chk':''}" onclick="togI('${c.id}','${item.id}')">
+      <div class="chbox${chk?' chk':''}">${chk?'✓':''}</div>
+      <div style="flex:1">
+        <div class="cht${chk?' done':''}">${x(item.text)}</div>
+        ${item.detail?`<div class="chd">${x(item.detail)}</div>`:''}
+      </div>
+      <button class="del-item" onclick="event.stopPropagation();rmCustom('${c.id}','${item.id}')" title="Eliminar">×</button>
+    </div>`;
+  }).join('');
+
+  return`
+    ${items_html||`<p style="font-size:12px;color:var(--txt2);margin-bottom:12px">Aquí puedes añadir cualquier documento, anotación o pendiente específico de este cliente que no esté en las categorías anteriores.</p>`}
+    <div class="custom-form">
+      <div class="custom-form-title">Añadir documento o anotación personalizada</div>
+      <div class="fg">
+        <input class="fi" id="cx-txt" type="text" placeholder="Ej: Escritura del local, acta comunidad, carta poder notarial…" style="margin-bottom:6px">
+      </div>
+      <div class="fg">
+        <input class="fi" id="cx-det" type="text" placeholder="Detalle o nota adicional (opcional)">
+      </div>
+      <button class="bp" style="margin-top:8px;font-size:11px;padding:6px 12px" onclick="addCustom('${c.id}')">+ Añadir</button>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  ACCIONES
+// ═══════════════════════════════════════════════════════
+function sCat(cat){selCat=cat;rnd();}
+
+function togI(cid,iid){
+  if(!prog[cid])prog[cid]=new Set();
+  if(prog[cid].has(iid))prog[cid].delete(iid);else prog[cid].add(iid);
+  svP(cid);
+  const p=gp(cid),c=clients.find(v=>v.id===cid);
+  if(c&&p.pct===100&&c.status==='pendiente'){c.status='completado';svC();}
+  else if(c&&p.n>0&&c.status==='pendiente'){c.status='en_proceso';svC();}
+  rnd();
+}
+
+function updSt(cid,val){const c=clients.find(v=>v.id===cid);if(c){c.status=val;svC();}}
+
+function delC(cid){
+  if(!confirm('¿Eliminar este cliente y todo su progreso? Esta acción no se puede deshacer.'))return;
+  clients=clients.filter(v=>v.id!==cid);delete prog[cid];
+  svC();try{localStorage.removeItem('gr-p-'+cid);}catch(e){}
+  if(selC===cid)nav('cli');else rnd();
+}
+
+function addCustom(cid){
+  const txt=document.getElementById('cx-txt')?.value.trim();
+  const det=document.getElementById('cx-det')?.value.trim();
+  if(!txt)return;
+  const c=clients.find(v=>v.id===cid);if(!c)return;
+  if(!c.customItems)c.customItems=[];
+  c.customItems.push({id:uid('cx'),text:txt,detail:det});
+  svC();rnd();
+}
+
+function rmCustom(cid,iid){
+  const c=clients.find(v=>v.id===cid);if(!c||!c.customItems)return;
+  c.customItems=c.customItems.filter(i=>i.id!==iid);
+  if(prog[cid])prog[cid].delete(iid);
+  svC();svP(cid);rnd();
+}
+
+// ═══════════════════════════════════════════════════════
+//  MODAL AÑADIR/EDITAR CLIENTE
+// ═══════════════════════════════════════════════════════
+function bgClk(e){if(e.target===document.getElementById('mod'))closeMod();}
+
+function openMod(cid){
+  edId=cid||null;const c=cid?clients.find(v=>v.id===cid):null;
+  document.getElementById('mtit').textContent=c?'Editar cliente':'Nuevo cliente';
+  document.getElementById('mbody').innerHTML=`
+    <div class="fg"><label class="fl">Nombre completo *</label>
+      <input class="fi" id="fn" type="text" value="${c?x(c.name):''}" placeholder="Ana García López"></div>
+    <div class="fg"><label class="fl">NIF/NIE *</label>
+      <input class="fi" id="fni" type="text" value="${c?x(c.nif):''}" placeholder="12345678A" style="text-transform:uppercase"></div>
+    <div class="fg"><label class="fl">Email</label>
+      <input class="fi" id="fe" type="email" value="${c?x(c.email||''):''}" placeholder="cliente@email.com"></div>
+    <div class="fg"><label class="fl">Comunidad Autónoma *</label>
+      <select class="fs" id="fcc"><option value="">Seleccionar…</option>
+        ${CCAA.map(v=>`<option value="${v.id}"${c&&c.ccaa===v.id?' selected':''}>${v.e} ${v.n}</option>`).join('')}
+      </select></div>
+    <div class="fg"><label class="fl">Estado</label>
+      <select class="fs" id="fst">
+        ${Object.entries(ST).map(([k,v])=>`<option value="${k}"${(c?c.status===k:k==='pendiente')?' selected':''}>${v.l}</option>`).join('')}
+      </select></div>
+    <div class="fg"><label class="fl">Notas internas</label>
+      <textarea class="fta" id="fno" rows="2" placeholder="Observaciones sobre este cliente…">${c?x(c.notes||''):''}</textarea></div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button class="bs" onclick="closeMod()">Cancelar</button>
+      <button class="bp" onclick="svMod()" style="flex:1">Guardar</button>
+    </div>`;
+  document.getElementById('mod').classList.add('open');
+  setTimeout(()=>document.getElementById('fn').focus(),60);
+}
+
+function closeMod(){document.getElementById('mod').classList.remove('open');edId=null;}
+
+function svMod(){
+  const name=document.getElementById('fn').value.trim();
+  const nif=document.getElementById('fni').value.trim().toUpperCase();
+  const email=document.getElementById('fe').value.trim();
+  const ccaa=document.getElementById('fcc').value;
+  const status=document.getElementById('fst').value;
+  const notes=document.getElementById('fno').value.trim();
+  if(!name||!nif||!ccaa){alert('Completa los campos obligatorios: Nombre, NIF y Comunidad Autónoma.');return;}
+  if(edId){
+    const c=clients.find(v=>v.id===edId);
+    if(c)Object.assign(c,{name,nif,email,ccaa,status,notes});
+  }else{
+    const id=uid('c');
+    clients.push({id,name,nif,email,ccaa,status,notes,customItems:[],createdAt:new Date().toISOString()});
+    prog[id]=new Set();
+  }
+  svC();closeMod();uNav();rnd();
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+loadAll();uNav();rnd();
+</script>
+</body>
+</html>
