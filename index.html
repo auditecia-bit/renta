@@ -1096,4 +1096,279 @@ const CAT_INFO={
   patrimonio:{
     desc:'Variaciones en el patrimonio del contribuyente: venta de inmuebles, acciones, fondos, criptomonedas, y ayudas públicas recibidas. Van a la base del ahorro salvo excepciones.',
     tips:[
-      {ico:'📉',t:'<strong>Compensación de pérdidas:</strong> las pérdidas patr
+      {ico:'📉',t:'<strong>Compensación de pérdidas:</strong> las pérdidas patrimoniales compensan ganancias. Si sobra saldo negativo, puede arrastrarse 4 años. Revisar ejercicios anteriores.'},
+      {ico:'₿',t:'<strong>Criptomonedas:</strong> cada permuta entre criptos es un hecho imponible (no solo la venta a euros). Obligatorio Modelo 721 si tenencias en el extranjero >50.000€.'},
+      {ico:'🏛️',t:'<strong>DANA y ayudas públicas:</strong> las subvenciones y ayudas recibidas (MOVES, DANA, bono alquiler) tributan como ganancia patrimonial en base general. No son exentas.'},
+    ]
+  },
+  estatal:{
+    desc:'Deducciones que aplican en todo el territorio común y reducen directamente la cuota íntegra estatal. Son las de mayor impacto económico para la mayoría de contribuyentes.',
+    tips:[
+      {ico:'🏦',t:'<strong>Plan de Pensiones:</strong> reduce la BASE imponible (no la cuota), por lo que el ahorro real depende del tipo marginal. Límite 1.500€/año + 4.250€ si hay aportación empresarial.'},
+      {ico:'👶',t:'<strong>Deducción por maternidad:</strong> 1.200€/año por hijo menor de 3 años si la madre trabaja y cotiza. Más hasta 1.000€ adicionales por guardería con factura. Se puede cobrar anticipada mensualmente.'},
+      {ico:'🔋',t:'<strong>Eficiencia energética:</strong> requiere certificado energético PREVIO a las obras. Sin él no hay deducción aunque se hayan pagado todas las facturas. Verificarlo antes de presentar.'},
+    ]
+  },
+  autonomica:{
+    desc:'Deducciones propias de cada Comunidad Autónoma que se aplican sobre la cuota autonómica. Son adicionales a las estatales y varían significativamente entre CCAA.',
+    tips:[
+      {ico:'🧾',t:'<strong>Pago bancario obligatorio:</strong> la mayoría de deducciones autonómicas exigen que el pago sea mediante tarjeta, transferencia o domiciliación. El efectivo NO da derecho a deducción.'},
+      {ico:'📄',t:'<strong>Facturas nominales:</strong> los tickets o facturas simplificadas sin NIF del contribuyente no son válidos para la mayoría de deducciones autonómicas. Exigir siempre factura completa.'},
+      {ico:'📊',t:'<strong>Límites de renta:</strong> casi todas las deducciones autonómicas tienen un tope de base imponible o liquidable. Verificar antes de incluirlas para evitar regularizaciones.'},
+    ]
+  },
+  extra:{
+    desc:'Espacio libre para documentación específica de este cliente que no encaja en las categorías estándar: poderes notariales, herencias pendientes, actividades económicas, etc.',
+    tips:[
+      {ico:'📝',t:'<strong>Actividades económicas:</strong> si el cliente tiene rendimientos de actividades (autónomo, alquileres en módulos, arrendamientos de local) requieren documentación específica adicional.'},
+      {ico:'⚖️',t:'<strong>Herencias y donaciones:</strong> si ha recibido herencia o donación en el ejercicio, puede haber ganancias patrimoniales o reducciones aplicables según la CCAA.'},
+      {ico:'🔔',t:'<strong>Atrasos y regularizaciones:</strong> los atrasos de ejercicios anteriores cobrados este año tienen reducción del 30% si el período de generación supera 2 años. Imputar en el año de cobro.'},
+    ]
+  },
+};
+
+// Tips específicos por CCAA para la categoría autonómica
+const AUT_TIPS={
+  val:[
+    {ico:'🌊',t:'<strong>DANA 2024 — NUEVA:</strong> deducción del 100% de los gastos de reparación de vivienda habitual dañada. Imprescindible acreditar la zona afectada y conservar todas las facturas.'},
+    {ico:'🍊',t:'<strong>Deportes y salud:</strong> facturas de gimnasio, médico, dentista u óptica DEBEN ir a nombre del contribuyente. Un ticket sin NIF no vale. Pago bancario obligatorio.'},
+    {ico:'🎵',t:'<strong>NUEVA 2025 — Enseñanzas musicales:</strong> hasta 150€ en conservatorio o escuela autorizada. Solo pago bancario, efectivo excluido.'},
+  ],
+  mad:[
+    {ico:'🏛️',t:'<strong>Alquiler jóvenes:</strong> hasta 1.000€ pero base liquidable no puede superar 25.620€. Verificar siempre el límite de renta.'},
+    {ico:'📚',t:'<strong>Gastos educativos:</strong> libros, uniformes y clases de apoyo hasta 1.000€/hijo. Centros autorizados. Enseñanza obligatoria y bachillerato.'},
+    {ico:'🏠',t:'<strong>Obras en vivienda habitual:</strong> mejoras de calidad, sostenibilidad y accesibilidad. Requieren factura con NIF y pago bancario.'},
+  ],
+  cat:[
+    {ico:'🌹',t:'<strong>Alquiler vivienda habitual:</strong> base imponible total ≤20.000€ (suma de ambos cónyuges en conjunta). Límite estricto, verificar antes de aplicar.'},
+    {ico:'👶',t:'<strong>Guardería 0-3 años:</strong> exige que ambos progenitores trabajen. Centro autorizado y factura a nombre del contribuyente.'},
+    {ico:'⚖️',t:'<strong>Custodia compartida:</strong> requiere sentencia judicial. Deducción específica de Cataluña, no confundir con el mínimo por descendientes.'},
+  ],
+  and:[
+    {ico:'🌻',t:'<strong>Alquiler jóvenes ≤35 años:</strong> deducción 15%, límite 500€. Base imponible ≤19.000€ individual. Contrato debe estar registrado.'},
+    {ico:'🏠',t:'<strong>Primera vivienda jóvenes:</strong> ITP pagado y acreditado. Escritura debe ser de vivienda habitual en Andalucía.'},
+    {ico:'👨‍👩‍👧',t:'<strong>Acogimiento familiar:</strong> deducción por acogimiento no remunerado de menores. Requiere resolución administrativa.'},
+  ],
+  ara:[
+    {ico:'⚔️',t:'<strong>Nacimiento/adopción:</strong> 500€ primer hijo, 600€ segundo, 750€ tercero o más. Límite base liquidable 35.000€ individual.'},
+    {ico:'🏠',t:'<strong>Alquiler jóvenes ≤36 años:</strong> base imponible ≤15.000€. Máximo 150€. Límite de renta muy estricto.'},
+    {ico:'👴',t:'<strong>Cuidado de dependientes:</strong> ascendientes mayores de 75 años o con discapacidad. Requiere resolución o certificado acreditativo.'},
+  ],
+  mur:[
+    {ico:'☀️',t:'<strong>Guardería:</strong> hijos menores de 3 años. Hasta 1.000€. Centro autorizado y factura a nombre del contribuyente.'},
+    {ico:'🌊',t:'<strong>DANA Murcia:</strong> algunas zonas afectadas. Verificar municipio en el listado oficial y consultar normativa específica.'},
+    {ico:'🩸',t:'<strong>Donaciones de sangre/órganos:</strong> certificado del Centro Regional de Hemodonación o CARM. Deducción específica de Murcia.'},
+  ],
+  clm:[
+    {ico:'🌊',t:'<strong>DANA CLM:</strong> algunas zonas afectadas. Verificar municipio y consultar las deducciones especiales aprobadas.'},
+    {ico:'👨‍👩‍👧',t:'<strong>Familia Numerosa:</strong> deducción adicional autonómica. Título vigente a 31/12 del ejercicio imprescindible.'},
+    {ico:'🏠',t:'<strong>Alquiler vivienda habitual:</strong> límite de base imponible aplicable. Máximo 300€.'},
+  ],
+  cyl:[
+    {ico:'🏰',t:'<strong>Partos múltiples:</strong> 1.010€ por cada hijo de parto múltiple. Acreditar con certificado de nacimiento.'},
+    {ico:'🏠',t:'<strong>Alquiler jóvenes ≤36 años:</strong> máximo 459€. Verificar límite de base imponible aplicable.'},
+    {ico:'🌿',t:'<strong>Rehabilitación rural:</strong> obras en vivienda habitual en núcleos rurales de CyL. Factura con NIF obligatoria.'},
+  ],
+  gal:[
+    {ico:'🐚',t:'<strong>Alquiler jóvenes ≤36 años o familia numerosa:</strong> máximo 300€. Contrato registrado y recibos de pago.'},
+    {ico:'🏆',t:'<strong>Deportistas de alto nivel gallegos:</strong> ayudas y subvenciones recibidas. Certificado del organismo competente.'},
+    {ico:'👨‍👩‍👧',t:'<strong>Acogimiento familiar:</strong> menores o mayores en riesgo de exclusión. Resolución administrativa necesaria.'},
+  ],
+  rio:[
+    {ico:'🍇',t:'<strong>Municipios pequeños:</strong> deducciones adicionales en La Rioja para vivienda y guardería en municipios del Anexo AEAT. Verificar listado.'},
+    {ico:'🏠',t:'<strong>Alquiler jóvenes ≤36 años:</strong> máximo 300€. Verificar que el municipio esté en el listado oficial AEAT.'},
+    {ico:'🏛️',t:'<strong>Patrimonio Histórico La Rioja:</strong> donaciones para conservación. Certificado de la entidad receptora.'},
+  ],
+};
+
+function rCatInfo(catId,ccaa){
+  let info=CAT_INFO[catId];
+  if(!info)return'';
+  let tips=[...info.tips];
+  // Para autonómica, sustituir el tercer tip por uno específico de la CCAA si existe
+  if(catId==='autonomica'&&AUT_TIPS[ccaa]&&AUT_TIPS[ccaa].length){
+    tips=[...AUT_TIPS[ccaa],...info.tips.slice(AUT_TIPS[ccaa].length)];
+    tips=tips.slice(0,3);
+  }
+  const tipsHtml=tips.map(t=>`<div class="cat-tip"><span class="cat-tip-ico">${t.ico}</span><span>${t.t}</span></div>`).join('');
+  return`<div class="cat-info">
+    <div class="cat-info-title">📌 Guía rápida</div>
+    <div class="cat-info-desc">${info.desc}</div>
+    <div class="cat-tips">${tipsHtml}</div>
+  </div>`;
+}
+
+// ─ CHECKLIST CON DRIVE ───────────────────────────────
+function rChecklist(ci,pr,cid){
+  if(!ci.length)return`<p style="font-size:12px;color:var(--txt2)">No hay documentos para esta categoría y comunidad autónoma.</p>`;
+  const catLabel=CATS.find(v=>v.id===selCat)?.l||selCat;
+  return ci.map(item=>{
+    const chk=pr.has(item.id);
+    const key=driveKey(cid,item.id);
+    const files=driveFiles[key]||[];
+    const filesHtml=files.map(f=>`
+      <div style="display:flex;align-items:center;gap:4px;margin-top:3px">
+        <a class="drive-link" href="${f.url}" target="_blank" rel="noopener">📄 ${x(f.name)}</a>
+        <button onclick="delDriveFile('${cid}','${item.id}','${f.id}',event)" style="border:none;background:none;color:var(--txt3);font-size:11px;cursor:pointer;padding:0 2px" title="Quitar enlace">×</button>
+      </div>`).join('');
+    return`<div class="chi${chk?' chk':''}${item.w&&!chk?' warn':''}" onclick="togI('${cid}','${item.id}')">
+      <div class="chbox${chk?' chk':''}">${chk?'✓':''}</div>
+      <div style="flex:1">
+        <div class="cht${chk?' done':''}">${x(item.t)}${item.w&&!chk?`<span class="wtag">Atención</span>`:''}</div>
+        <div class="chd">${x(item.d)}</div>
+        ${filesHtml}
+        <button id="upbtn-${item.id}" class="up-btn${files.length?'uploaded':''}" onclick="event.stopPropagation();triggerUpload('${cid}','${item.id}','${catLabel.replace(/'/g,"\\'")}')">
+          ${files.length?'↑ Añadir más':'↑ Subir a Drive'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  EMAIL GENERATOR
+// ═══════════════════════════════════════════════════════
+let emailCid=null, emailTone='cercano';
+
+function openEmail(cid){
+  emailCid=cid; emailTone='cercano';
+  buildEmail();
+  document.getElementById('emod').classList.add('open');
+  uToneBtns();
+}
+function closeEmail(){document.getElementById('emod').classList.remove('open');emailCid=null;}
+function setTone(t){emailTone=t;buildEmail();uToneBtns();}
+function uToneBtns(){
+  document.getElementById('etone-c').style.background=emailTone==='cercano'?'#0F766E':'';
+  document.getElementById('etone-c').style.color=emailTone==='cercano'?'#fff':'';
+  document.getElementById('etone-f').style.background=emailTone==='formal'?'var(--nv)':'';
+  document.getElementById('etone-f').style.color=emailTone==='formal'?'#fff':'';
+}
+
+function buildEmail(){
+  const c=clients.find(v=>v.id===emailCid);if(!c)return;
+  const all=items(emailCid),pr=prog[emailCid]||new Set(),p=gp(emailCid);
+  const nombre=c.name.split(' ')[0]; // primer nombre
+
+  // Pendientes por categoría (solo las que tienen items sin marcar)
+  const pendientesCat=[];
+  CATS.forEach(cat=>{
+    if(cat.id==='extra')return;
+    const falta=all.filter(i=>i.c===cat.id&&!pr.has(i.id)&&!i.w);
+    if(falta.length) pendientesCat.push({cat:cat.l, items:falta});
+  });
+
+  // Alertas (w:true sin marcar) — siempre las destaca
+  const alertas=all.filter(i=>i.w&&!pr.has(i.id));
+
+  // Aportado: cuántas categorías tienen algo
+  const catConDoc=CATS.filter(cat=>all.filter(i=>i.c===cat.id&&pr.has(i.id)).length>0).length;
+
+  const fecha=new Date().toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+  const plazo='30 de junio de 2025'; // plazo campaña renta
+
+  let txt='';
+
+  if(emailTone==='cercano'){
+    const saludo=`Hola ${nombre},`;
+    const intro=p.pct===0
+      ? `Te escribo para darte el pistoletazo de salida de la campaña de la Renta 2025. Para poder preparar tu declaración y sacarle el máximo partido fiscal, necesito que vayas reuniendo la documentación que te detallo más abajo.`
+      : p.pct===100
+      ? `Te escribo para confirmarte que tenemos toda la documentación necesaria para preparar tu declaración de la Renta 2025. En breve me pongo con ella y te aviso en cuanto la tenga lista para revisar.`
+      : `Te escribo para darte un avance sobre cómo llevamos tu declaración de la Renta 2025. Llevamos un ${p.pct}% de la documentación recibida — vamos bien, pero aún nos faltan algunas cosas para cerrarla.`;
+
+    txt+=`${saludo}\n\n${intro}\n`;
+
+    if(alertas.length){
+      txt+=`\n⚠️ DOCUMENTACIÓN URGENTE / CON REQUISITOS ESPECIALES\n`;
+      txt+=`${'─'.repeat(50)}\n`;
+      alertas.forEach(i=>txt+=`• ${i.t}\n  → ${i.d}\n`);
+    }
+
+    if(pendientesCat.length&&p.pct<100){
+      txt+=`\n📋 DOCUMENTACIÓN PENDIENTE DE RECIBIR\n`;
+      txt+=`${'─'.repeat(50)}\n`;
+      pendientesCat.forEach(({cat,items})=>{
+        txt+=`\n${cat}:\n`;
+        items.forEach(i=>txt+=`  • ${i.t}\n`);
+      });
+    }
+
+    if(p.pct>0&&p.pct<100){
+      txt+=`\n✅ LO QUE YA TENEMOS\n`;
+      txt+=`${'─'.repeat(50)}\n`;
+      txt+=`Hemos recibido documentación de ${catConDoc} categorías (${p.n} de ${p.t} documentos). ¡Gracias!\n`;
+    }
+
+    txt+=`\n📅 Recuerda que el plazo para presentar la declaración finaliza el ${plazo}, así que cuanto antes lo tengamos todo, mejor.\n`;
+    txt+=`\nCualquier duda me dices. Puedes responder a este email o llamarme directamente.\n`;
+    txt+=`\nUn saludo,\n[Tu nombre]\n[Asesoría] · [Teléfono]`;
+
+  } else {
+    // FORMAL
+    const saludo=`Estimado/a Sr./Sra. ${c.name},`;
+    const intro=p.pct===0
+      ? `Me dirijo a usted para comunicarle el inicio de la campaña de declaración del Impuesto sobre la Renta de las Personas Físicas correspondiente al ejercicio 2024 (Renta 2025). Con el fin de poder elaborar su declaración de forma eficiente y maximizar las deducciones aplicables, le ruego proceda a la recopilación de la documentación que se detalla a continuación.`
+      : p.pct===100
+      ? `Me complace comunicarle que disponemos de toda la documentación necesaria para proceder a la elaboración de su declaración del IRPF correspondiente al ejercicio 2024. Les informaremos puntualmente una vez esté lista para su revisión y firma.`
+      : `Me dirijo a usted para informarle del estado actual de la recopilación de documentación necesaria para la elaboración de su declaración del IRPF 2024. En la actualidad hemos recibido el ${p.pct}% de la documentación requerida. Le agradecería que procediera a remitir los documentos pendientes que se relacionan a continuación.`;
+
+    txt+=`${saludo}\n\n${intro}\n`;
+
+    if(alertas.length){
+      txt+=`\nDOCUMENTACIÓN CON REQUISITOS ESPECIALES\n`;
+      txt+=`${'─'.repeat(50)}\n`;
+      alertas.forEach(i=>txt+=`- ${i.t}\n  Nota: ${i.d}\n`);
+    }
+
+    if(pendientesCat.length&&p.pct<100){
+      txt+=`\nDOCUMENTACIÓN PENDIENTE DE APORTACIÓN\n`;
+      txt+=`${'─'.repeat(50)}\n`;
+      pendientesCat.forEach(({cat,items})=>{
+        txt+=`\n${cat.toUpperCase()}:\n`;
+        items.forEach(i=>txt+=`- ${i.t}\n`);
+      });
+    }
+
+    if(p.pct>0&&p.pct<100){
+      txt+=`\nDOCUMENTACIÓN YA RECIBIDA\n`;
+      txt+=`${'─'.repeat(50)}\n`;
+      txt+=`Se ha recibido documentación correspondiente a ${catConDoc} categorías (${p.n} de ${p.t} documentos solicitados).\n`;
+    }
+
+    txt+=`\nLe recordamos que el plazo de presentación de la declaración finaliza el ${plazo}. Para garantizar una tramitación adecuada, le rogamos que nos remita la documentación pendiente a la mayor brevedad posible.\n`;
+    txt+=`\nQuedamos a su disposición para cualquier consulta.\n`;
+    txt+=`\nAtentamente,\n[Nombre y apellidos]\n[Cargo] · [Asesoría]\n[Teléfono] · [Email]`;
+  }
+
+  document.getElementById('email-body').value=txt;
+  // actualizar mailto
+  const mb=document.getElementById('mailto-btn');
+  mb.dataset.email=c.email||'';
+  mb.dataset.asunto=`Declaración de la Renta 2025 — documentación${p.pct===100?' lista':'pendiente'}`;
+}
+
+function copyEmail(){
+  const ta=document.getElementById('email-body');
+  ta.select();
+  document.execCommand('copy');
+  const btn=document.getElementById('copy-btn');
+  const orig=btn.textContent;
+  btn.textContent='✓ Copiado';
+  btn.style.background='var(--em)';
+  setTimeout(()=>{btn.textContent=orig;btn.style.background='';},2000);
+}
+
+function mailtoEmail(){
+  const mb=document.getElementById('mailto-btn');
+  const email=mb.dataset.email||'';
+  const asunto=encodeURIComponent(mb.dataset.asunto||'Declaración de la Renta 2025');
+  const cuerpo=encodeURIComponent(document.getElementById('email-body').value);
+  window.location.href=`mailto:${email}?subject=${asunto}&body=${cuerpo}`;
+}
+
+// ─ INIT ──────────────────────────────────────────────
+loadAll();loadDriveFiles();uNav();rnd();
+</script>
+</body>
+</html>
