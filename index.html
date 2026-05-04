@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GestiónRenta — Panel de Asesoría</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root{
   --bg:#F9F8F5;--card:#fff;--bg2:#F2F1EE;--bg3:#E8E7E3;
@@ -104,6 +105,34 @@ tr:hover td{background:var(--bg2);cursor:pointer}
 .abt:hover{color:var(--txt)}
 .delbtn{border:none;background:none;cursor:pointer;font-size:11px;color:var(--danger);padding:2px 5px;font-family:inherit}
 .del-item{border:none;background:none;cursor:pointer;color:var(--danger);font-size:14px;padding:0 3px;line-height:1;flex-shrink:0;margin-top:1px}
+/* ─ FISCAL CARD ─ */
+.fiscal-card{background:var(--card);border:0.5px solid var(--brd);border-radius:10px;padding:16px;margin-bottom:13px}
+.fiscal-section{border-top:0.5px solid var(--brd);padding-top:12px;margin-top:12px}
+.hint{font-size:10px;color:var(--txt3);margin-top:3px;line-height:1.4}
+/* ─ PRINT ─ */
+@media print{
+  .tnav,.addbtn,.bkbtn,.abt,.delbtn,.del-item,.fiscal-card,.clist,.custom-form,.btn-sm,.bp,.bs,
+  button,.no-print{display:none!important}
+  body{background:#fff;color:#000;font-size:11pt}
+  .wrap{padding:0;max-width:100%}
+  .cnt{border:none;border-radius:0;padding:0}
+  .card{border:none;border-radius:0;padding:0;box-shadow:none}
+  .dl{display:block}
+  .chi{break-inside:avoid;border:0.5px solid #ddd;margin-bottom:4px}
+  .print-header{display:block!important}
+}
+.print-header{display:none}
+/* ─ DRIVE ─ */
+.drive-btn{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:5px;border:0.5px solid var(--brd2);background:none;font-size:11px;cursor:pointer;font-family:inherit;color:var(--txt2);flex-shrink:0;align-self:center}
+.drive-btn:hover{background:var(--bg2)}
+.drive-btn.connected{border-color:#34A853;color:#34A853;background:#F0FDF4}
+.drive-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+.up-btn{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;border:0.5px solid var(--brd2);background:none;font-size:10px;cursor:pointer;color:var(--txt2);font-family:inherit;flex-shrink:0;margin-top:3px;white-space:nowrap}
+.up-btn:hover{background:var(--bg2)}
+.up-btn.uploaded{border-color:#34A853;color:#34A853;background:#F0FDF4}
+.drive-link{display:inline-flex;align-items:center;gap:3px;font-size:10px;color:#1A73E8;text-decoration:none;margin-top:3px}
+.drive-link:hover{text-decoration:underline}
+.uploading{opacity:.6;pointer-events:none}
 </style>
 </head>
 <body>
@@ -118,6 +147,9 @@ tr:hover td{background:var(--bg2);cursor:pointer}
       <button class="ntab" id="tb-cli" onclick="nav('cli')">Clientes</button>
       <div id="tb-cw"></div>
       <div class="nspc"></div>
+      <button id="drive-btn" class="drive-btn" onclick="driveConnect()" style="margin-right:8px">
+        <span class="drive-dot"></span><span id="drive-lbl">Conectar Drive</span>
+      </button>
       <button class="addbtn" onclick="openMod()">+ Nuevo cliente</button>
     </nav>
     <div class="cnt" id="cnt"></div>
@@ -439,10 +471,13 @@ function rDet(){
           </select>
         </div>
         <button class="abt" onclick="openMod('${c.id}')">editar</button>
+        <button class="btn-sm no-print" onclick="exportPDF('${c.id}')" style="background:var(--nv);color:#fff;border-color:var(--nv)">↓ PDF</button>
       </div>
     </div>
     <div style="margin-top:11px">${pbar(p.pct)}</div>
   </div>
+
+  ${rFiscal(c)}
 
   <div class="dl">
     <div class="card clist">
@@ -461,6 +496,118 @@ function rDet(){
       ${selCat==='extra'?rExtra(c,pr):rChecklist(ci,pr,c.id)}
     </div>
   </div>`;
+}
+
+// ── TARJETA ACCESO HACIENDA ───────────────────────────
+function rFiscal(c){
+  const f=c.fiscal||{};
+  const hasRef=f.refCode&&f.refCode.trim().length>3;
+  return`<div class="fiscal-card no-print">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div style="font-size:12px;font-weight:600">🔑 Acceso a Renta WEB — AEAT</div>
+    <span class="bdg ${hasRef?'b-c':'b-p'}">${hasRef?'Código obtenido':'Pendiente obtener'}</span>
+  </div>
+  <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:4px">
+    <div style="flex:1">
+      <label class="fl">Código de referencia (si ya lo tiene el cliente)</label>
+      <input class="fi" id="f-ref" type="text" value="${x(f.refCode||'')}" placeholder="Ej: A1B2C3D4E5">
+    </div>
+    <button class="btn-sm" style="flex-shrink:0" onclick="saveFiscal('${c.id}',event)">Guardar</button>
+  </div>
+  <div class="fiscal-section">
+    <div style="font-size:11px;font-weight:600;color:var(--txt2);margin-bottom:10px">¿Cómo obtener el código? — sin certificado digital ni Cl@ve</div>
+    <div class="fg">
+      <label class="fl">1. Fecha de caducidad del DNI (DD/MM/AAAA)</label>
+      <input class="fi" id="f-exp" type="text" value="${x(f.dniExpiry||'')}" placeholder="Ej: 15/03/2030" style="max-width:180px">
+      <div class="hint">En el anverso del DNI, bajo la foto. Si no tiene fecha (DNI permanente), marcar la casilla de abajo.</div>
+    </div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;margin-bottom:10px">
+      <input type="checkbox" id="f-perm" ${f.dniPermanent?'checked':''} onchange="document.getElementById('perm-block').style.display=this.checked?'block':'none'">
+      <span>DNI <strong>permanente</strong> (sin fecha de caducidad — habitual en mayores de 70 años)</span>
+    </label>
+    <div id="perm-block" style="display:${f.dniPermanent?'block':'none'};background:var(--bg2);border-radius:7px;padding:10px;margin-bottom:10px">
+      <label class="fl">Número de soporte (reverso del DNI, campo MRZ)</label>
+      <input class="fi" id="f-sop" type="text" value="${x(f.dniSoporte||'')}" placeholder="Ej: IDESP123456789" style="max-width:230px">
+      <div class="hint">Aparece en el reverso del DNI. Formato: letras + números (ej: IDESP, E, o BEA seguido de dígitos). En DNIs muy antiguos puede ser solo números.</div>
+    </div>
+    <div class="fg">
+      <label class="fl">2. Casilla 505 de la renta anterior (base liquidable general y del ahorro)</label>
+      <input class="fi" id="f-505" type="text" value="${x(f.casilla505||'')}" placeholder="Ej: 24.567,89" style="max-width:180px">
+      <div class="hint">Página 1 de la declaración anterior. Si fue 0 o negativa → introducir 0,00</div>
+    </div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;margin-bottom:10px">
+      <input type="checkbox" id="f-norent" ${f.noPrevRenta?'checked':''} onchange="document.getElementById('iban-block').style.display=this.checked?'block':'none'">
+      <span>No presentó renta el año anterior (primera declaración o no obligado)</span>
+    </label>
+    <div id="iban-block" style="display:${f.noPrevRenta?'block':'none'};background:var(--bg2);border-radius:7px;padding:10px;margin-bottom:10px">
+      <label class="fl">IBAN — sustituto de la casilla 505</label>
+      <input class="fi" id="f-iban" type="text" value="${x(f.iban||'')}" placeholder="Ej: ES91 2100 0418 4502 0005 1332">
+      <div class="hint">Cuenta bancaria que Hacienda ya tenga registrada (por devoluciones o domiciliaciones previas). Si es primera declaración absoluta, IBAN de cualquier cuenta a su nombre.</div>
+    </div>
+    <button class="bp" style="font-size:11px;padding:6px 12px" onclick="saveFiscal('${c.id}',event)">Guardar datos de acceso</button>
+  </div>
+  </div>`;
+}
+
+function saveFiscal(cid,event){
+  const c=clients.find(v=>v.id===cid);if(!c)return;
+  if(!c.fiscal)c.fiscal={};
+  c.fiscal.refCode=document.getElementById('f-ref')?.value.trim()||'';
+  c.fiscal.dniExpiry=document.getElementById('f-exp')?.value.trim()||'';
+  c.fiscal.dniPermanent=document.getElementById('f-perm')?.checked||false;
+  c.fiscal.dniSoporte=document.getElementById('f-sop')?.value.trim()||'';
+  c.fiscal.casilla505=document.getElementById('f-505')?.value.trim()||'';
+  c.fiscal.noPrevRenta=document.getElementById('f-norent')?.checked||false;
+  c.fiscal.iban=document.getElementById('f-iban')?.value.trim()||'';
+  svC();
+  if(event?.target){const b=event.target,o=b.textContent;b.textContent='✓ Guardado';b.style.background='var(--em)';b.style.color='#fff';setTimeout(()=>{b.textContent=o;b.style.background='';b.style.color='';},1800);}
+}
+
+function exportPDF(cid){
+  const c=clients.find(v=>v.id===cid);if(!c)return;
+  const all=items(cid),pr=prog[cid]||new Set(),p=gp(cid),f=c.fiscal||{};
+  const catHtml=CATS.map(cat=>{
+    const ci=all.filter(i=>i.c===cat.id);if(!ci.length)return'';
+    const cc=ci.filter(i=>pr.has(i.id)).length;
+    const rows=ci.map(item=>{const chk=pr.has(item.id);return`
+      <tr><td style="padding:5px 8px;width:22px;font-size:13px;border-bottom:1px solid #eee">${chk?'&#9745;':'&#9744;'}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid #eee">
+        <div style="font-size:10.5pt;font-weight:500;color:${chk?'#aaa':'#111'};text-decoration:${chk?'line-through':''}">${x(item.t)}</div>
+        ${!chk?`<div style="font-size:9pt;color:#666;margin-top:1px">${x(item.d)}</div>`:''}
+      </td></tr>`;}).join('');
+    return`<div style="break-inside:avoid;margin-bottom:14px">
+      <div style="font-size:10pt;font-weight:700;color:#1E2A3A;background:#F2F1EE;padding:5px 8px;border-radius:4px;margin-bottom:4px">${cat.l} <span style="font-weight:400;color:#888">${cc}/${ci.length}</span></div>
+      <table style="width:100%;border-collapse:collapse">${rows}</table></div>`;
+  }).join('');
+  const fiscHtml=`<div style="margin-bottom:16px;padding:10px;border:1px solid #ddd;border-radius:6px;break-inside:avoid;font-size:10pt">
+    <div style="font-weight:700;margin-bottom:6px;color:#1E2A3A">Datos acceso AEAT</div>
+    <table style="font-size:9.5pt;border-collapse:collapse;width:100%">
+      <tr><td style="color:#666;padding:2px 8px 2px 0;white-space:nowrap">Código referencia</td><td style="padding:2px 0">${f.refCode?`<strong>${x(f.refCode)}</strong>`:'<em style="color:#aaa">pendiente</em>'}</td></tr>
+      ${f.dniExpiry?`<tr><td style="color:#666;padding:2px 8px 2px 0">Caducidad DNI</td><td>${x(f.dniExpiry)}</td></tr>`:''}
+      ${f.dniPermanent&&f.dniSoporte?`<tr><td style="color:#666;padding:2px 8px 2px 0">Nº soporte (permanente)</td><td>${x(f.dniSoporte)}</td></tr>`:''}
+      ${f.casilla505?`<tr><td style="color:#666;padding:2px 8px 2px 0">Casilla 505</td><td>${x(f.casilla505)}</td></tr>`:''}
+      ${f.noPrevRenta&&f.iban?`<tr><td style="color:#666;padding:2px 8px 2px 0">IBAN (sustituto)</td><td>${x(f.iban)}</td></tr>`:''}
+    </table></div>`;
+  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+  <title>Checklist Renta 2025 — ${x(c.name)}</title>
+  <style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:20px;color:#111;max-width:800px;margin:0 auto}@page{margin:15mm}@media print{body{padding:0}}</style>
+  </head><body>
+  <div style="border-bottom:2px solid #C8973A;padding-bottom:10px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-start">
+    <div><div style="font-size:14pt;font-weight:700;color:#1E2A3A">Checklist Documentación — Renta 2025</div>
+    <div style="font-size:10pt;color:#555;margin-top:3px">${x(c.name)} &nbsp;&middot;&nbsp; ${x(c.nif)} &nbsp;&middot;&nbsp; ${ccn(c.ccaa)}</div>
+    ${c.email?`<div style="font-size:9.5pt;color:#888">${x(c.email)}</div>`:''}
+    ${c.notes?`<div style="font-size:9pt;color:#888;font-style:italic;margin-top:2px">${x(c.notes)}</div>`:''}
+    </div>
+    <div style="text-align:right"><div style="font-size:18pt;font-weight:700;color:#C8973A">${p.pct}%</div><div style="font-size:9pt;color:#888">${p.n}/${p.t} docs</div></div>
+  </div>
+  ${fiscHtml}${catHtml}
+  <div style="margin-top:16px;padding-top:8px;border-top:1px solid #eee;font-size:8.5pt;color:#aaa">
+    Generado el ${new Date().toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'})} &nbsp;&middot;&nbsp; GestiónRenta — Manual AEAT Renta 2025
+  </div>
+  <script>window.onload=function(){window.print();}<\/script></body></html>`;
+  const w=window.open('','_blank');
+  if(w){w.document.write(html);w.document.close();}
+  else alert('Permite las ventanas emergentes para este sitio e inténtalo de nuevo.');
 }
 
 function rChecklist(ci,pr,cid){
@@ -601,9 +748,152 @@ function svMod(){
 }
 
 // ═══════════════════════════════════════════════════════
-//  INIT
+//  GOOGLE DRIVE INTEGRATION
 // ═══════════════════════════════════════════════════════
-loadAll();uNav();rnd();
+const CLIENT_ID='863085062807-bm5c28kdrn14eo8qmo7av8is4f8bvg1a.apps.googleusercontent.com';
+const SCOPES='https://www.googleapis.com/auth/drive.file';
+let gToken=null,tokenClient=null,driveFiles={};
+
+function loadDriveFiles(){
+  try{const r=localStorage.getItem('gr-drive');if(r)driveFiles=JSON.parse(r);}catch(e){driveFiles={};}
+}
+function saveDriveFiles(){try{localStorage.setItem('gr-drive',JSON.stringify(driveFiles));}catch(e){}}
+function driveKey(cid,iid){return cid+'__'+iid;}
+
+function driveConnect(){
+  if(gToken){gToken=null;uDriveBtn();rnd();return;}
+  if(!tokenClient){
+    tokenClient=google.accounts.oauth2.initTokenClient({
+      client_id:CLIENT_ID,scope:SCOPES,
+      callback:(resp)=>{
+        if(resp.error)return;
+        gToken=resp.access_token;
+        setTimeout(()=>{gToken=null;uDriveBtn();},3500*1000);
+        uDriveBtn();rnd();
+      }
+    });
+  }
+  tokenClient.requestAccessToken({prompt:'consent'});
+}
+
+function uDriveBtn(){
+  const btn=document.getElementById('drive-btn');
+  const lbl=document.getElementById('drive-lbl');
+  if(!btn||!lbl)return;
+  if(gToken){btn.className='drive-btn connected';lbl.textContent='Drive conectado';}
+  else{btn.className='drive-btn';lbl.textContent='Conectar Drive';}
+}
+
+async function apiReq(url,opts={}){
+  if(!gToken)throw new Error('No autenticado');
+  const r=await fetch(url,{...opts,headers:{...opts.headers,'Authorization':'Bearer '+gToken}});
+  if(!r.ok)throw new Error('API error '+r.status);
+  return r.json();
+}
+
+async function findOrCreateFolder(name,parentId){
+  const q=`name='${name}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`;
+  const res=await apiReq(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`);
+  if(res.files&&res.files.length>0)return res.files[0].id;
+  const meta={name,mimeType:'application/vnd.google-apps.folder',parents:[parentId]};
+  const created=await apiReq('https://www.googleapis.com/drive/v3/files?fields=id',{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(meta)
+  });
+  return created.id;
+}
+
+async function getOrCreateRoot(){
+  const q=`name='GestiónRenta 2025' and mimeType='application/vnd.google-apps.folder' and 'root' in parents and trashed=false`;
+  const res=await apiReq(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`);
+  if(res.files&&res.files.length>0)return res.files[0].id;
+  const meta={name:'GestiónRenta 2025',mimeType:'application/vnd.google-apps.folder'};
+  const created=await apiReq('https://www.googleapis.com/drive/v3/files?fields=id',{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(meta)
+  });
+  return created.id;
+}
+
+async function uploadToDrive(file,cid,iid,catLabel){
+  if(!gToken){alert('Conecta primero con Google Drive (botón arriba a la derecha).');return;}
+  const c=clients.find(v=>v.id===cid);if(!c)return;
+  const btn=document.getElementById('upbtn-'+iid);
+  if(btn){btn.classList.add('uploading');btn.textContent='Subiendo…';}
+  try{
+    const rootId=await getOrCreateRoot();
+    const clientFolder=await findOrCreateFolder(c.nif+' — '+c.name,rootId);
+    const catFolder=await findOrCreateFolder(catLabel,clientFolder);
+    const meta={name:file.name,parents:[catFolder]};
+    const form=new FormData();
+    form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));
+    form.append('file',file);
+    const resp=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',{
+      method:'POST',headers:{'Authorization':'Bearer '+gToken},body:form
+    });
+    if(!resp.ok)throw new Error('Upload failed '+resp.status);
+    const data=await resp.json();
+    const key=driveKey(cid,iid);
+    if(!driveFiles[key])driveFiles[key]=[];
+    driveFiles[key].push({id:data.id,name:data.name,url:data.webViewLink,ts:Date.now()});
+    saveDriveFiles();
+    // auto-check the item if not already checked
+    if(!prog[cid])prog[cid]=new Set();
+    if(!prog[cid].has(iid)){prog[cid].add(iid);svP(cid);}
+    rnd();
+  }catch(e){
+    console.error(e);
+    if(btn){btn.classList.remove('uploading');btn.textContent='↑ Subir';}
+    alert('Error al subir: '+e.message+'\n\nAsegúrate de tener Drive conectado.');
+  }
+}
+
+function triggerUpload(cid,iid,catLabel){
+  if(!gToken){alert('Conecta primero con Google Drive (botón arriba a la derecha).');return;}
+  const inp=document.createElement('input');
+  inp.type='file';inp.multiple=true;
+  inp.accept='.pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip';
+  inp.onchange=async()=>{
+    for(const f of Array.from(inp.files))await uploadToDrive(f,cid,iid,catLabel);
+  };
+  inp.click();
+}
+
+function delDriveFile(cid,iid,fileId,e){
+  e.stopPropagation();
+  const key=driveKey(cid,iid);
+  if(!driveFiles[key])return;
+  driveFiles[key]=driveFiles[key].filter(f=>f.id!==fileId);
+  saveDriveFiles();rnd();
+}
+
+// ─ CHECKLIST CON DRIVE ───────────────────────────────
+function rChecklist(ci,pr,cid){
+  if(!ci.length)return`<p style="font-size:12px;color:var(--txt2)">No hay documentos para esta categoría y comunidad autónoma.</p>`;
+  const catLabel=CATS.find(v=>v.id===selCat)?.l||selCat;
+  return ci.map(item=>{
+    const chk=pr.has(item.id);
+    const key=driveKey(cid,item.id);
+    const files=driveFiles[key]||[];
+    const filesHtml=files.map(f=>`
+      <div style="display:flex;align-items:center;gap:4px;margin-top:3px">
+        <a class="drive-link" href="${f.url}" target="_blank" rel="noopener">📄 ${x(f.name)}</a>
+        <button onclick="delDriveFile('${cid}','${item.id}','${f.id}',event)" style="border:none;background:none;color:var(--txt3);font-size:11px;cursor:pointer;padding:0 2px" title="Quitar enlace">×</button>
+      </div>`).join('');
+    return`<div class="chi${chk?' chk':''}${item.w&&!chk?' warn':''}" onclick="togI('${cid}','${item.id}')">
+      <div class="chbox${chk?' chk':''}">${chk?'✓':''}</div>
+      <div style="flex:1">
+        <div class="cht${chk?' done':''}">${x(item.t)}${item.w&&!chk?`<span class="wtag">Atención</span>`:''}</div>
+        <div class="chd">${x(item.d)}</div>
+        ${filesHtml}
+        <button id="upbtn-${item.id}" class="up-btn${files.length?'uploaded':''}" onclick="event.stopPropagation();triggerUpload('${cid}','${item.id}','${catLabel.replace(/'/g,"\\'")}')">
+          ${files.length?'↑ Añadir más':'↑ Subir a Drive'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─ INIT ──────────────────────────────────────────────
+loadAll();loadDriveFiles();uNav();rnd();
 </script>
 </body>
 </html>
