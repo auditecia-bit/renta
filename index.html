@@ -566,45 +566,126 @@ function saveFiscal(cid,event){
 function exportPDF(cid){
   const c=clients.find(v=>v.id===cid);if(!c)return;
   const all=items(cid),pr=prog[cid]||new Set(),p=gp(cid),f=c.fiscal||{};
-  const catHtml=CATS.map(cat=>{
-    const ci=all.filter(i=>i.c===cat.id);if(!ci.length)return'';
+
+  // ── Documentos aportados (checked) agrupados por categoría ──
+  const aportadoRows=[];
+  CATS.forEach(cat=>{
+    const checked=all.filter(i=>i.c===cat.id&&pr.has(i.id));
+    checked.forEach(item=>{
+      const key=driveKey(cid,item.id);
+      const files=driveFiles[key]||[];
+      const driveTag=files.length
+        ?`<span style="font-size:8.5pt;color:#34A853;margin-left:6px">📎 Drive (${files.length})</span>`
+        :'';
+      aportadoRows.push(`<tr>
+        <td style="padding:4px 10px 4px 0;color:#666;font-size:9pt;white-space:nowrap;vertical-align:top">${cat.l}</td>
+        <td style="padding:4px 0;font-size:9.5pt;vertical-align:top">${x(item.t)}${driveTag}</td>
+      </tr>`);
+    });
+  });
+
+  // ── Advertencias: pendientes relevantes ──
+  // Prioridad alta: items con w:true no marcados + items críticos no marcados
+  const CRITICOS=['dni','cemp','sepe','ibi','bfis'];
+  const warnings=[];
+
+  // 1. Items marcados como advertencia (w:true) que faltan
+  all.filter(i=>i.w&&!pr.has(i.id)).forEach(i=>{
+    warnings.push({nivel:'alta',txt:i.t,det:i.d});
+  });
+
+  // 2. Documentos críticos sin marcar
+  all.filter(i=>CRITICOS.includes(i.id)&&!pr.has(i.id)).forEach(i=>{
+    warnings.push({nivel:'alta',txt:i.t,det:i.d});
+  });
+
+  // 3. Categorías con 0% de aportación (si tiene items)
+  CATS.forEach(cat=>{
+    if(cat.id==='extra')return;
+    const ci=all.filter(i=>i.c===cat.id);
+    if(ci.length===0)return;
     const cc=ci.filter(i=>pr.has(i.id)).length;
-    const rows=ci.map(item=>{const chk=pr.has(item.id);return`
-      <tr><td style="padding:5px 8px;width:22px;font-size:13px;border-bottom:1px solid #eee">${chk?'&#9745;':'&#9744;'}</td>
-      <td style="padding:5px 8px;border-bottom:1px solid #eee">
-        <div style="font-size:10.5pt;font-weight:500;color:${chk?'#aaa':'#111'};text-decoration:${chk?'line-through':''}">${x(item.t)}</div>
-        ${!chk?`<div style="font-size:9pt;color:#666;margin-top:1px">${x(item.d)}</div>`:''}
-      </td></tr>`;}).join('');
-    return`<div style="break-inside:avoid;margin-bottom:14px">
-      <div style="font-size:10pt;font-weight:700;color:#1E2A3A;background:#F2F1EE;padding:5px 8px;border-radius:4px;margin-bottom:4px">${cat.l} <span style="font-weight:400;color:#888">${cc}/${ci.length}</span></div>
-      <table style="width:100%;border-collapse:collapse">${rows}</table></div>`;
-  }).join('');
-  const fiscHtml=`<div style="margin-bottom:16px;padding:10px;border:1px solid #ddd;border-radius:6px;break-inside:avoid;font-size:10pt">
-    <div style="font-weight:700;margin-bottom:6px;color:#1E2A3A">Datos acceso AEAT</div>
-    <table style="font-size:9.5pt;border-collapse:collapse;width:100%">
-      <tr><td style="color:#666;padding:2px 8px 2px 0;white-space:nowrap">Código referencia</td><td style="padding:2px 0">${f.refCode?`<strong>${x(f.refCode)}</strong>`:'<em style="color:#aaa">pendiente</em>'}</td></tr>
-      ${f.dniExpiry?`<tr><td style="color:#666;padding:2px 8px 2px 0">Caducidad DNI</td><td>${x(f.dniExpiry)}</td></tr>`:''}
-      ${f.dniPermanent&&f.dniSoporte?`<tr><td style="color:#666;padding:2px 8px 2px 0">Nº soporte (permanente)</td><td>${x(f.dniSoporte)}</td></tr>`:''}
-      ${f.casilla505?`<tr><td style="color:#666;padding:2px 8px 2px 0">Casilla 505</td><td>${x(f.casilla505)}</td></tr>`:''}
-      ${f.noPrevRenta&&f.iban?`<tr><td style="color:#666;padding:2px 8px 2px 0">IBAN (sustituto)</td><td>${x(f.iban)}</td></tr>`:''}
-    </table></div>`;
+    if(cc===0){
+      warnings.push({nivel:'media',txt:`Categoría "${cat.l}" — ningún documento aportado`,det:`${ci.length} documentos pendientes en esta sección.`});
+    }
+  });
+
+  // 4. Items no marcados con Drive adjunto en otros items de su categoría (señal de que la categoría está activa pero el item se olvidó)
+  CATS.forEach(cat=>{
+    if(cat.id==='extra')return;
+    const ci=all.filter(i=>i.c===cat.id);
+    const anyDrive=ci.some(i=>(driveFiles[driveKey(cid,i.id)]||[]).length>0);
+    if(anyDrive){
+      ci.filter(i=>!pr.has(i.id)&&!i.w&&!CRITICOS.includes(i.id)).forEach(i=>{
+        warnings.push({nivel:'baja',txt:i.t,det:i.d});
+      });
+    }
+  });
+
+  // Deduplicar warnings por texto
+  const seen=new Set();
+  const wUniq=warnings.filter(w=>{if(seen.has(w.txt))return false;seen.add(w.txt);return true;});
+  const wAlta=wUniq.filter(w=>w.nivel==='alta');
+  const wMedia=wUniq.filter(w=>w.nivel==='media');
+  const wBaja=wUniq.filter(w=>w.nivel==='baja');
+
+  const wRow=(w,color,ico)=>`<tr>
+    <td style="padding:4px 8px 4px 0;vertical-align:top;font-size:13px">${ico}</td>
+    <td style="padding:4px 0;vertical-align:top">
+      <div style="font-size:9.5pt;font-weight:600;color:${color}">${x(w.txt)}</div>
+      <div style="font-size:8.5pt;color:#666;margin-top:1px">${x(w.det)}</div>
+    </td></tr>`;
+
+  const wHtml=(!wAlta.length&&!wMedia.length&&!wBaja.length)
+    ?`<div style="color:#34A853;font-size:10pt;padding:8px 0">✓ Sin advertencias — documentación completa.</div>`
+    :`${wAlta.map(w=>wRow(w,'#B91C1C','🔴')).join('')}
+      ${wMedia.map(w=>wRow(w,'#92400E','🟡')).join('')}
+      ${wBaja.map(w=>wRow(w,'#374151','⚪')).join('')}`;
+
+  const fiscHtml=`<table style="font-size:9pt;border-collapse:collapse;margin-bottom:4px">
+    ${f.refCode?`<tr><td style="color:#666;padding:1px 10px 1px 0">Código ref.</td><td><strong>${x(f.refCode)}</strong></td></tr>`:''}
+    ${f.dniExpiry?`<tr><td style="color:#666;padding:1px 10px 1px 0">Caducidad DNI</td><td>${x(f.dniExpiry)}</td></tr>`:''}
+    ${f.dniPermanent&&f.dniSoporte?`<tr><td style="color:#666;padding:1px 10px 1px 0">Nº soporte</td><td>${x(f.dniSoporte)}</td></tr>`:''}
+    ${f.casilla505?`<tr><td style="color:#666;padding:1px 10px 1px 0">Casilla 505</td><td>${x(f.casilla505)}</td></tr>`:''}
+    ${f.noPrevRenta&&f.iban?`<tr><td style="color:#666;padding:1px 10px 1px 0">IBAN</td><td>${x(f.iban)}</td></tr>`:''}
+  </table>`;
+
   const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-  <title>Checklist Renta 2025 — ${x(c.name)}</title>
-  <style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:20px;color:#111;max-width:800px;margin:0 auto}@page{margin:15mm}@media print{body{padding:0}}</style>
-  </head><body>
-  <div style="border-bottom:2px solid #C8973A;padding-bottom:10px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-start">
-    <div><div style="font-size:14pt;font-weight:700;color:#1E2A3A">Checklist Documentación — Renta 2025</div>
-    <div style="font-size:10pt;color:#555;margin-top:3px">${x(c.name)} &nbsp;&middot;&nbsp; ${x(c.nif)} &nbsp;&middot;&nbsp; ${ccn(c.ccaa)}</div>
-    ${c.email?`<div style="font-size:9.5pt;color:#888">${x(c.email)}</div>`:''}
-    ${c.notes?`<div style="font-size:9pt;color:#888;font-style:italic;margin-top:2px">${x(c.notes)}</div>`:''}
+  <title>Resumen Renta 2025 — ${x(c.name)}</title>
+  <style>
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:24px;color:#111;max-width:780px;margin:0 auto}
+    h2{font-size:11pt;font-weight:700;color:#1E2A3A;border-bottom:1.5px solid #C8973A;padding-bottom:4px;margin:20px 0 10px}
+    @page{margin:14mm}@media print{body{padding:0}}
+  </style></head><body>
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #C8973A;padding-bottom:10px;margin-bottom:16px">
+    <div>
+      <div style="font-size:14pt;font-weight:700;color:#1E2A3A">Resumen Documentación — Renta 2025</div>
+      <div style="font-size:10pt;color:#555;margin-top:3px">${x(c.name)} &nbsp;·&nbsp; ${x(c.nif)} &nbsp;·&nbsp; ${ccn(c.ccaa)}</div>
+      ${c.notes?`<div style="font-size:9pt;color:#888;font-style:italic">${x(c.notes)}</div>`:''}
+      ${fiscHtml}
     </div>
-    <div style="text-align:right"><div style="font-size:18pt;font-weight:700;color:#C8973A">${p.pct}%</div><div style="font-size:9pt;color:#888">${p.n}/${p.t} docs</div></div>
+    <div style="text-align:right;flex-shrink:0;margin-left:20px">
+      <div style="font-size:22pt;font-weight:700;color:#C8973A">${p.pct}%</div>
+      <div style="font-size:9pt;color:#888">${p.n} de ${p.t} docs</div>
+      <div style="font-size:9pt;color:#888;margin-top:2px">${new Date().toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'})}</div>
+    </div>
   </div>
-  ${fiscHtml}${catHtml}
-  <div style="margin-top:16px;padding-top:8px;border-top:1px solid #eee;font-size:8.5pt;color:#aaa">
-    Generado el ${new Date().toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'})} &nbsp;&middot;&nbsp; GestiónRenta — Manual AEAT Renta 2025
+
+  <h2>✅ Documentación aportada</h2>
+  ${aportadoRows.length
+    ?`<table style="width:100%;border-collapse:collapse">${aportadoRows.join('')}</table>`
+    :`<p style="color:#999;font-size:9.5pt">Ningún documento marcado todavía.</p>`}
+
+  <h2>⚠️ Advertencias y pendientes</h2>
+  <table style="width:100%;border-collapse:collapse">${wHtml}</table>
+
+  <div style="margin-top:20px;padding-top:8px;border-top:1px solid #eee;font-size:8pt;color:#bbb">
+    GestiónRenta · Manual AEAT Renta 2025 · ${new Date().toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'})}
   </div>
-  <script>window.onload=function(){window.print();}<\/script></body></html>`;
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`;
+
   const w=window.open('','_blank');
   if(w){w.document.write(html);w.document.close();}
   else alert('Permite las ventanas emergentes para este sitio e inténtalo de nuevo.');
