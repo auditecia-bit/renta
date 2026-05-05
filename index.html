@@ -122,6 +122,27 @@ tr:hover td{background:var(--bg2);cursor:pointer}
   .print-header{display:block!important}
 }
 .print-header{display:none}
+/* ─ N/P STATE ─ */
+.chi.np{background:#F9F9F9;border-color:#E0E0E0;opacity:.75}
+.chbox.np{background:#999;border-color:#999;font-size:8px;font-weight:700;color:#fff;letter-spacing:-.5px}
+.cht.np{text-decoration:line-through;color:#aaa}
+.np-badge{display:inline-flex;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;background:#E5E7EB;color:#6B7280;margin-left:5px;vertical-align:middle}
+/* ─ UNITS ─ */
+.units-section{margin-top:16px;border-top:0.5px solid var(--brd);padding-top:14px}
+.units-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.units-title{font-size:11px;font-weight:600;color:var(--txt);display:flex;align-items:center;gap:6px}
+.unit-card{background:var(--bg2);border:0.5px solid var(--brd);border-radius:8px;padding:12px;margin-bottom:8px}
+.unit-card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.unit-type-badge{display:inline-flex;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;background:var(--nv);color:var(--gd)}
+.unit-fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;font-size:11px}
+.unit-field{background:var(--card);border-radius:5px;padding:6px 8px}
+.unit-field-l{font-size:9.5px;color:var(--txt3);margin-bottom:1px}
+.unit-field-v{font-size:11px;font-weight:500;color:var(--txt)}
+.unit-result{background:var(--nv);border-radius:6px;padding:8px 10px;margin-top:8px;display:flex;gap:12px;flex-wrap:wrap}
+.unit-result-item{font-size:10px;color:rgba(255,255,255,.7)}
+.unit-result-item strong{display:block;font-size:12px;color:#fff;font-weight:600}
+.unit-result-item.pos strong{color:#4ADE80}
+.unit-result-item.neg strong{color:#F87171}
 /* ─ CATEGORY NOTES ─ */
 .cat-notes{margin-top:14px;border-top:0.5px solid var(--brd);padding-top:12px}
 .cat-notes-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
@@ -368,7 +389,7 @@ const ST={pendiente:{l:'Pendiente',cls:'b-p'},en_proceso:{l:'En proceso',cls:'b-
 // ═══════════════════════════════════════════════════════
 //  ESTADO
 // ═══════════════════════════════════════════════════════
-let clients=[],prog={},vw='dash',selC=null,selCat='personales',edId=null;
+let clients=[],prog={},progNP={},vw='dash',selC=null,selCat='personales',edId=null;
 
 // ═══════════════════════════════════════════════════════
 //  STORAGE (localStorage)
@@ -378,10 +399,13 @@ function loadAll(){
   for(const c of clients){
     try{const r=localStorage.getItem('gr-p-'+c.id);prog[c.id]=new Set(r?JSON.parse(r):[]);}
     catch(e){prog[c.id]=new Set();}
+    try{const r=localStorage.getItem('gr-np-'+c.id);progNP[c.id]=new Set(r?JSON.parse(r):[]);}
+    catch(e){progNP[c.id]=new Set();}
   }
 }
 function svC(){try{localStorage.setItem('gr-clients',JSON.stringify(clients));}catch(e){}}
 function svP(cid){try{localStorage.setItem('gr-p-'+cid,JSON.stringify([...prog[cid]]));}catch(e){}}
+function svNP(cid){try{localStorage.setItem('gr-np-'+cid,JSON.stringify([...(progNP[cid]||new Set())]));}catch(e){}}
 
 // ═══════════════════════════════════════════════════════
 //  HELPERS
@@ -395,9 +419,10 @@ function items(cid){
   return[...COM,...auto,...custom];
 }
 function gp(cid){
-  const it=items(cid),pr=prog[cid]||new Set();
+  const it=items(cid),pr=prog[cid]||new Set(),np=progNP[cid]||new Set();
+  const done=it.filter(i=>pr.has(i.id)||np.has(i.id)).length;
   const n=it.filter(i=>pr.has(i.id)).length;
-  return{n,t:it.length,pct:it.length?Math.round(n/it.length*100):0};
+  return{n,np:np.size,done,t:it.length,pct:it.length?Math.round(done/it.length*100):0};
 }
 function uid(p){return (p||'c')+Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
 function pbar(pct){return`<div class="pt"><div class="pf ${pct===100?'pf-e':'pf-g'}" style="width:${pct}%"></div></div>`;}
@@ -511,6 +536,7 @@ function rDet(){
         <button class="abt" onclick="openMod('${c.id}')">editar</button>
         <button class="btn-sm no-print" onclick="exportPDF('${c.id}')" style="background:var(--nv);color:#fff;border-color:var(--nv)">↓ PDF</button>
         <button class="btn-sm no-print" onclick="openEmail('${c.id}')" style="background:#0F766E;color:#fff;border-color:#0F766E">✉ Email</button>
+        <button class="btn-sm no-print" onclick="delC('${c.id}')" style="color:var(--danger);border-color:rgba(220,38,38,.25)">🗑 Eliminar</button>
       </div>
     </div>
     <div style="margin-top:11px">${pbar(p.pct)}</div>
@@ -533,7 +559,7 @@ function rDet(){
 
     <div class="card">
       <div style="font-size:13px;font-weight:600;margin-bottom:13px">${CATS.find(v=>v.id===selCat)?.l}</div>
-      ${selCat==='extra'?rExtra(c,pr):rCatInfo(selCat,c.ccaa)+rChecklist(ci,pr,c.id)+rCatNotes(c,selCat)}
+      ${selCat==='extra'?rExtra(c,pr):rCatInfo(selCat,c.ccaa)+rChecklist(ci,pr,c.id)+rUnits(c,selCat)+rCatNotes(c,selCat)}
     </div>
   </div>`;
 }
@@ -787,11 +813,15 @@ function sCat(cat){selCat=cat;rnd();}
 
 function togI(cid,iid){
   if(!prog[cid])prog[cid]=new Set();
-  if(prog[cid].has(iid))prog[cid].delete(iid);else prog[cid].add(iid);
-  svP(cid);
+  if(!progNP[cid])progNP[cid]=new Set();
+  const chk=prog[cid].has(iid), np=progNP[cid].has(iid);
+  if(!chk&&!np){prog[cid].add(iid);}           // vacío → aportado
+  else if(chk){prog[cid].delete(iid);progNP[cid].add(iid);}  // aportado → N/P
+  else{progNP[cid].delete(iid);}               // N/P → vacío
+  svP(cid);svNP(cid);
   const p=gp(cid),c=clients.find(v=>v.id===cid);
   if(c&&p.pct===100&&c.status==='pendiente'){c.status='completado';svC();}
-  else if(c&&p.n>0&&c.status==='pendiente'){c.status='en_proceso';svC();}
+  else if(c&&p.done>0&&c.status==='pendiente'){c.status='en_proceso';svC();}
   rnd();
 }
 
@@ -799,8 +829,10 @@ function updSt(cid,val){const c=clients.find(v=>v.id===cid);if(c){c.status=val;s
 
 function delC(cid){
   if(!confirm('¿Eliminar este cliente y todo su progreso? Esta acción no se puede deshacer.'))return;
-  clients=clients.filter(v=>v.id!==cid);delete prog[cid];
-  svC();try{localStorage.removeItem('gr-p-'+cid);}catch(e){}
+  clients=clients.filter(v=>v.id!==cid);delete prog[cid];delete progNP[cid];
+  svC();
+  try{localStorage.removeItem('gr-p-'+cid);}catch(e){}
+  try{localStorage.removeItem('gr-np-'+cid);}catch(e){}
   if(selC===cid)nav('cli');else rnd();
 }
 
@@ -1202,8 +1234,9 @@ function rCatInfo(catId,ccaa){
 function rChecklist(ci,pr,cid){
   if(!ci.length)return`<p style="font-size:12px;color:var(--txt2)">No hay documentos para esta categoría y comunidad autónoma.</p>`;
   const catLabel=CATS.find(v=>v.id===selCat)?.l||selCat;
+  const np=progNP[cid]||new Set();
   return ci.map(item=>{
-    const chk=pr.has(item.id);
+    const chk=pr.has(item.id), isNP=np.has(item.id);
     const key=driveKey(cid,item.id);
     const files=driveFiles[key]||[];
     const filesHtml=files.map(f=>`
@@ -1211,18 +1244,263 @@ function rChecklist(ci,pr,cid){
         <a class="drive-link" href="${f.url}" target="_blank" rel="noopener">📄 ${x(f.name)}</a>
         <button onclick="delDriveFile('${cid}','${item.id}','${f.id}',event)" style="border:none;background:none;color:var(--txt3);font-size:11px;cursor:pointer;padding:0 2px" title="Quitar enlace">×</button>
       </div>`).join('');
-    return`<div class="chi${chk?' chk':''}${item.w&&!chk?' warn':''}" onclick="togI('${cid}','${item.id}')">
-      <div class="chbox${chk?' chk':''}">${chk?'✓':''}</div>
+    const cls=chk?' chk':isNP?' np':(item.w?' warn':'');
+    const boxCls=chk?' chk':isNP?' np':'';
+    const boxTxt=chk?'✓':isNP?'N/P':'';
+    const upBtn=isNP?'':`<button id="upbtn-${item.id}" class="up-btn${files.length?' uploaded':''}" onclick="event.stopPropagation();triggerUpload('${cid}','${item.id}','${catLabel.replace(/'/g,"\\'")}')">
+      ${files.length?'↑ Añadir más':'↑ Subir a Drive'}
+    </button>`;
+    return`<div class="chi${cls}" onclick="togI('${cid}','${item.id}')" title="${chk?'Click → marcar como No Procede':isNP?'Click → quitar marca':'Click → marcar como Aportado'}">
+      <div class="chbox${boxCls}">${boxTxt}</div>
       <div style="flex:1">
-        <div class="cht${chk?' done':''}">${x(item.t)}${item.w&&!chk?`<span class="wtag">Atención</span>`:''}</div>
-        <div class="chd">${x(item.d)}</div>
+        <div class="cht${chk?' done':isNP?' np':''}">${x(item.t)}${item.w&&!chk&&!isNP?`<span class="wtag">Atención</span>`:''}${isNP?`<span class="np-badge">No procede</span>`:''}</div>
+        ${!isNP?`<div class="chd">${x(item.d)}</div>`:''}
         ${filesHtml}
-        <button id="upbtn-${item.id}" class="up-btn${files.length?'uploaded':''}" onclick="event.stopPropagation();triggerUpload('${cid}','${item.id}','${catLabel.replace(/'/g,"\\'")}')">
-          ${files.length?'↑ Añadir más':'↑ Subir a Drive'}
-        </button>
+        ${upBtn}
       </div>
     </div>`;
   }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  UNIDADES (Inmuebles / Patrimonio)
+// ═══════════════════════════════════════════════════════
+const UNIT_TYPES={
+  inmuebles:[
+    {id:'habitual',l:'Vivienda habitual'},
+    {id:'alquiler',l:'En alquiler'},
+    {id:'disposicion',l:'A disposición del titular'},
+    {id:'vacia',l:'Vacía'},
+    {id:'local',l:'Local / Garaje / Trastero'},
+  ],
+  patrimonio:[
+    {id:'inmueble_v',l:'Inmueble vendido'},
+    {id:'acciones',l:'Acciones / ETFs'},
+    {id:'fondos',l:'Fondos de inversión'},
+    {id:'cripto',l:'Criptomonedas'},
+    {id:'otros',l:'Otros activos'},
+  ],
+};
+
+const fmt=v=>{
+  if(v===undefined||v===null||v==='')return'—';
+  const n=parseFloat(String(v).replace(',','.'));
+  if(isNaN(n))return v;
+  return n.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+'€';
+};
+
+function rUnitCalc(u,cat){
+  if(cat==='inmuebles'){
+    if(u.subtype==='alquiler'){
+      const ing=parseFloat(u.ingresos)||0;
+      const gastos=(parseFloat(u.ibi)||0)+(parseFloat(u.comunidad)||0)+(parseFloat(u.seguro)||0)+(parseFloat(u.intereses)||0)+(parseFloat(u.reparaciones)||0);
+      const amort=(parseFloat(u.valorConstruccion)||0)*0.03;
+      const totalGastos=gastos+amort;
+      const rtoNeto=ing-totalGastos;
+      const reduccion=Math.max(0,rtoNeto)*0.6;
+      const rtoReducido=rtoNeto-reduccion;
+      return`<div class="unit-result">
+        <div class="unit-result-item"><span>Ingresos brutos</span><strong>${fmt(ing)}</strong></div>
+        <div class="unit-result-item"><span>Gastos deducibles</span><strong style="color:#F87171">-${fmt(totalGastos)}</strong></div>
+        <div class="unit-result-item"><span>Rdto. neto</span><strong>${fmt(rtoNeto)}</strong></div>
+        <div class="unit-result-item"><span>Reducción 60%</span><strong style="color:#4ADE80">-${fmt(reduccion)}</strong></div>
+        <div class="unit-result-item ${rtoReducido>=0?'pos':'neg'}"><span>Rdto. neto reducido</span><strong>${fmt(rtoReducido)}</strong></div>
+      </div>`;
+    }
+    if(u.subtype==='disposicion'||u.subtype==='vacia'){
+      const vc=parseFloat(u.valorCatastral)||0;
+      const pct=u.revision?0.011:0.02;
+      const renta=vc*pct;
+      return`<div class="unit-result">
+        <div class="unit-result-item"><span>Valor catastral</span><strong>${fmt(vc)}</strong></div>
+        <div class="unit-result-item"><span>% imputación</span><strong>${(pct*100).toFixed(1)}%</strong></div>
+        <div class="unit-result-item pos"><span>Renta imputada</span><strong>${fmt(renta)}</strong></div>
+      </div>`;
+    }
+    return'';
+  }
+  if(cat==='patrimonio'){
+    const compra=(parseFloat(u.importeCompra)||0)+(parseFloat(u.gastosCompra)||0);
+    const venta=(parseFloat(u.importeVenta)||0)-(parseFloat(u.gastosVenta)||0);
+    if(!compra&&!venta)return'';
+    const result=venta-compra;
+    return`<div class="unit-result">
+      <div class="unit-result-item"><span>Coste de adquisición</span><strong>${fmt(compra)}</strong></div>
+      <div class="unit-result-item"><span>Valor de transmisión</span><strong>${fmt(venta)}</strong></div>
+      <div class="unit-result-item ${result>=0?'pos':'neg'}"><span>${result>=0?'Ganancia':'Pérdida'} patrimonial</span><strong>${fmt(Math.abs(result))}</strong></div>
+    </div>`;
+  }
+  return'';
+}
+
+function rUnits(c,cat){
+  if(cat!=='inmuebles'&&cat!=='patrimonio')return'';
+  const units=(c.units||[]).filter(u=>u.cat===cat);
+  const types=UNIT_TYPES[cat];
+  const unitsHtml=units.map(u=>{
+    const tl=types.find(t=>t.id===u.subtype)?.l||u.subtype;
+    let fieldsHtml='';
+    if(cat==='inmuebles'){
+      if(u.subtype==='alquiler'){
+        fieldsHtml=`
+          ${u.refCat?`<div class="unit-field"><div class="unit-field-l">Ref. catastral</div><div class="unit-field-v">${x(u.refCat)}</div></div>`:''}
+          ${u.ingresos?`<div class="unit-field"><div class="unit-field-l">Ingresos brutos</div><div class="unit-field-v">${fmt(u.ingresos)}</div></div>`:''}
+          ${u.ibi?`<div class="unit-field"><div class="unit-field-l">IBI</div><div class="unit-field-v">${fmt(u.ibi)}</div></div>`:''}
+          ${u.comunidad?`<div class="unit-field"><div class="unit-field-l">Comunidad prop.</div><div class="unit-field-v">${fmt(u.comunidad)}</div></div>`:''}
+          ${u.seguro?`<div class="unit-field"><div class="unit-field-l">Seguro</div><div class="unit-field-v">${fmt(u.seguro)}</div></div>`:''}
+          ${u.intereses?`<div class="unit-field"><div class="unit-field-l">Intereses hipoteca</div><div class="unit-field-v">${fmt(u.intereses)}</div></div>`:''}
+          ${u.valorConstruccion?`<div class="unit-field"><div class="unit-field-l">Valor construcción</div><div class="unit-field-v">${fmt(u.valorConstruccion)}</div></div>`:''}
+          ${u.reparaciones?`<div class="unit-field"><div class="unit-field-l">Reparaciones</div><div class="unit-field-v">${fmt(u.reparaciones)}</div></div>`:''}`;
+      }else if(u.subtype==='disposicion'||u.subtype==='vacia'){
+        fieldsHtml=`
+          ${u.refCat?`<div class="unit-field"><div class="unit-field-l">Ref. catastral</div><div class="unit-field-v">${x(u.refCat)}</div></div>`:''}
+          ${u.valorCatastral?`<div class="unit-field"><div class="unit-field-l">Valor catastral</div><div class="unit-field-v">${fmt(u.valorCatastral)}</div></div>`:''}
+          <div class="unit-field"><div class="unit-field-l">Revisión catastral</div><div class="unit-field-v">${u.revision?'Desde 2009 (1,1%)':'Anterior (2%)'}</div></div>`;
+      }else{
+        fieldsHtml=u.refCat?`<div class="unit-field"><div class="unit-field-l">Ref. catastral</div><div class="unit-field-v">${x(u.refCat)}</div></div>`:'';
+      }
+    }else{
+      fieldsHtml=`
+        ${u.fechaCompra?`<div class="unit-field"><div class="unit-field-l">Fecha compra</div><div class="unit-field-v">${x(u.fechaCompra)}</div></div>`:''}
+        ${u.importeCompra?`<div class="unit-field"><div class="unit-field-l">Precio compra</div><div class="unit-field-v">${fmt(u.importeCompra)}</div></div>`:''}
+        ${u.gastosCompra?`<div class="unit-field"><div class="unit-field-l">Gastos compra</div><div class="unit-field-v">${fmt(u.gastosCompra)}</div></div>`:''}
+        ${u.fechaVenta?`<div class="unit-field"><div class="unit-field-l">Fecha venta</div><div class="unit-field-v">${x(u.fechaVenta)}</div></div>`:''}
+        ${u.importeVenta?`<div class="unit-field"><div class="unit-field-l">Precio venta</div><div class="unit-field-v">${fmt(u.importeVenta)}</div></div>`:''}
+        ${u.gastosVenta?`<div class="unit-field"><div class="unit-field-l">Gastos venta</div><div class="unit-field-v">${fmt(u.gastosVenta)}</div></div>`:''}`;
+    }
+    return`<div class="unit-card">
+      <div class="unit-card-hdr">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="unit-type-badge">${tl}</span>
+          <span style="font-size:12px;font-weight:500;color:var(--txt)">${x(u.desc||'Sin descripción')}</span>
+        </div>
+        <div style="display:flex;gap:5px">
+          <button class="btn-sm" onclick="openUnitMod('${c.id}','${cat}','${u.id}')">editar</button>
+          <button class="btn-sm btn-danger" onclick="delUnit('${c.id}','${u.id}')">×</button>
+        </div>
+      </div>
+      ${fieldsHtml?`<div class="unit-fields">${fieldsHtml}</div>`:''}
+      ${rUnitCalc(u,cat)}
+      ${u.notas?`<div style="font-size:10px;color:var(--txt2);font-style:italic;margin-top:6px;padding-top:6px;border-top:0.5px solid var(--brd)">📝 ${x(u.notas)}</div>`:''}
+    </div>`;
+  }).join('');
+
+  const label=cat==='inmuebles'?'inmueble':'activo/operación';
+  return`<div class="units-section">
+    <div class="units-hdr">
+      <div class="units-title">🏗️ ${cat==='inmuebles'?'Inmuebles del contribuyente':'Operaciones patrimoniales'} <span style="font-size:10px;font-weight:400;color:var(--txt3)">(${units.length})</span></div>
+      <button class="btn-sm" style="background:var(--nv);color:#fff;border-color:var(--nv)" onclick="openUnitMod('${c.id}','${cat}',null)">+ Añadir ${label}</button>
+    </div>
+    ${units.length?unitsHtml:`<div style="font-size:11px;color:var(--txt3);padding:10px 0">No hay ${label}s registrados. Añade uno con el botón.</div>`}
+  </div>`;
+}
+
+let unitModCid=null,unitModCat=null,unitModId=null;
+function openUnitMod(cid,cat,uid_){
+  unitModCid=cid;unitModCat=cat;unitModId=uid_;
+  const c=clients.find(v=>v.id===cid);
+  const u=uid_?(c.units||[]).find(v=>v.id===uid_):null;
+  const types=UNIT_TYPES[cat];
+  const curType=u?.subtype||types[0].id;
+  document.getElementById('mtit').textContent=u?'Editar unidad':'Nueva unidad';
+  document.getElementById('mbody').innerHTML=rUnitForm(cat,u,curType,types);
+  document.getElementById('mod').classList.add('open');
+}
+
+function rUnitForm(cat,u,curType,types){
+  const fi=(id,l,ph,val,type='text')=>`<div class="fg"><label class="fl">${l}</label><input class="fi" id="uf-${id}" type="${type}" value="${x(val||'')}" placeholder="${ph}"></div>`;
+  const fNum=(id,l,ph,val)=>`<div class="fg"><label class="fl">${l}</label><input class="fi" id="uf-${id}" type="number" step="0.01" min="0" value="${val||''}" placeholder="${ph}"></div>`;
+  let extra='';
+  if(cat==='inmuebles'){
+    extra+=fi('refCat','Referencia catastral','1234567AB1234AB',u?.refCat);
+    if(curType==='alquiler'){
+      extra+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`;
+      extra+=fNum('ingresos','Ingresos brutos anuales (€)','12.000,00',u?.ingresos);
+      extra+=fNum('ibi','IBI (€)','400,00',u?.ibi);
+      extra+=fNum('comunidad','Comunidad propietarios (€)','600,00',u?.comunidad);
+      extra+=fNum('seguro','Seguro del inmueble (€)','200,00',u?.seguro);
+      extra+=fNum('intereses','Intereses hipoteca (€)','1.500,00',u?.intereses);
+      extra+=fNum('valorConstruccion','Valor construcción (€) — amortización 3%','120.000,00',u?.valorConstruccion);
+      extra+=fNum('reparaciones','Reparaciones y conservación (€)','800,00',u?.reparaciones);
+      extra+=`</div>`;
+    }else if(curType==='disposicion'||curType==='vacia'){
+      extra+=fNum('valorCatastral','Valor catastral (€)','80.000,00',u?.valorCatastral);
+      extra+=`<div class="fg"><label class="fl">Revisión catastral</label>
+        <select class="fs" id="uf-revision">
+          <option value="1" ${u?.revision?'selected':''}>Desde 2009 o posterior (1,1%)</option>
+          <option value="0" ${u&&!u.revision?'selected':''}>Anterior a 2009 (2%)</option>
+        </select></div>`;
+    }
+  }else{
+    extra+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`;
+    extra+=fi('fechaCompra','Fecha de adquisición','DD/MM/AAAA',u?.fechaCompra);
+    extra+=fNum('importeCompra','Precio de adquisición (€)','150.000,00',u?.importeCompra);
+    extra+=fNum('gastosCompra','Gastos compra — notaría, ITP… (€)','8.000,00',u?.gastosCompra);
+    extra+=fi('fechaVenta','Fecha de transmisión','DD/MM/AAAA',u?.fechaVenta);
+    extra+=fNum('importeVenta','Precio de transmisión (€)','220.000,00',u?.importeVenta);
+    extra+=fNum('gastosVenta','Gastos venta — inmob., notaría… (€)','5.000,00',u?.gastosVenta);
+    extra+=`</div>`;
+  }
+  return`
+    <div class="fg"><label class="fl">Tipo</label>
+      <select class="fs" id="uf-subtype" onchange="refreshUnitForm('${cat}')">
+        ${types.map(t=>`<option value="${t.id}"${curType===t.id?' selected':''}>${t.l}</option>`).join('')}
+      </select></div>
+    <div class="fg"><label class="fl">Descripción / Dirección</label>
+      <input class="fi" id="uf-desc" type="text" value="${x(u?.desc||'')}" placeholder="${cat==='inmuebles'?'Ej: Piso C/ Mayor 5, 2ºA':'Ej: Acciones Banco Santander'}"></div>
+    ${extra}
+    <div class="fg"><label class="fl">Notas</label>
+      <textarea class="fta" id="uf-notas" rows="2" placeholder="Observaciones adicionales…">${x(u?.notas||'')}</textarea></div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button class="bs" onclick="closeMod()">Cancelar</button>
+      <button class="bp" onclick="saveUnit()" style="flex:1">Guardar</button>
+    </div>`;
+}
+
+function refreshUnitForm(cat){
+  const types=UNIT_TYPES[cat];
+  const curType=document.getElementById('uf-subtype')?.value||types[0].id;
+  const c=clients.find(v=>v.id===unitModCid);
+  const u=unitModId?(c?.units||[]).find(v=>v.id===unitModId):null;
+  document.getElementById('mbody').innerHTML=rUnitForm(cat,u,curType,types);
+}
+
+function saveUnit(){
+  const c=clients.find(v=>v.id===unitModCid);if(!c)return;
+  if(!c.units)c.units=[];
+  const subtype=document.getElementById('uf-subtype')?.value||'';
+  const desc=document.getElementById('uf-desc')?.value.trim()||'';
+  const notas=document.getElementById('uf-notas')?.value.trim()||'';
+  const gv=id=>{const el=document.getElementById('uf-'+id);return el?el.value:'';}
+  const gn=id=>{const v=parseFloat(gv(id).replace(',','.'));return isNaN(v)?undefined:v;}
+  const unitData={subtype,desc,notas,cat:unitModCat,
+    refCat:gv('refCat'),
+    // inmuebles alquiler
+    ingresos:gn('ingresos'),ibi:gn('ibi'),comunidad:gn('comunidad'),
+    seguro:gn('seguro'),intereses:gn('intereses'),
+    valorConstruccion:gn('valorConstruccion'),reparaciones:gn('reparaciones'),
+    // inmuebles disposicion/vacia
+    valorCatastral:gn('valorCatastral'),
+    revision:document.getElementById('uf-revision')?.value==='1',
+    // patrimonio
+    fechaCompra:gv('fechaCompra'),importeCompra:gn('importeCompra'),
+    gastosCompra:gn('gastosCompra'),fechaVenta:gv('fechaVenta'),
+    importeVenta:gn('importeVenta'),gastosVenta:gn('gastosVenta'),
+  };
+  if(unitModId){
+    const idx=c.units.findIndex(v=>v.id===unitModId);
+    if(idx>-1)c.units[idx]={...c.units[idx],...unitData};
+  }else{
+    c.units.push({id:uid('u'),...unitData});
+  }
+  svC();closeMod();rnd();
+}
+
+function delUnit(cid,uid_){
+  if(!confirm('¿Eliminar esta unidad?'))return;
+  const c=clients.find(v=>v.id===cid);if(!c)return;
+  c.units=(c.units||[]).filter(u=>u.id!==uid_);
+  svC();rnd();
 }
 
 // ═══════════════════════════════════════════════════════
