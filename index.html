@@ -635,41 +635,50 @@ function exportPDF(cid){
 
   // ── Documentos aportados (checked) agrupados por categoría ──
   const aportadoRows=[];
-  const npRows=[];
+  const npCount={};
+  const npBycat={};
+  const np=progNP[cid]||new Set();
+
   CATS.forEach(cat=>{
     const checked=all.filter(i=>i.c===cat.id&&pr.has(i.id));
-    const npItems=all.filter(i=>i.c===cat.id&&(progNP[cid]||new Set()).has(i.id));
+    const npItems=all.filter(i=>i.c===cat.id&&np.has(i.id));
     const note=(c.catNotes||{})[cat.id]||'';
+    if(npItems.length)npBycat[cat.l]=npItems.length;
     checked.forEach(item=>{
       const key=driveKey(cid,item.id);
       const files=driveFiles[key]||[];
       const driveTag=files.length
-        ?`<span style="font-size:8.5pt;color:#34A853;margin-left:6px">📎 Drive (${files.length})</span>`
+        ?`<span style="font-size:8pt;color:#34A853;margin-left:6px">📎 ${files.length} archivo${files.length>1?'s':''} en Drive</span>`
         :'';
       aportadoRows.push(`<tr>
-        <td style="padding:4px 10px 4px 0;color:#666;font-size:9pt;white-space:nowrap;vertical-align:top">${cat.l}</td>
-        <td style="padding:4px 0;font-size:9.5pt;vertical-align:top">${x(item.t)}${driveTag}</td>
-      </tr>`);
-    });
-    npItems.forEach(item=>{
-      npRows.push(`<tr>
-        <td style="padding:3px 10px 3px 0;color:#999;font-size:9pt;white-space:nowrap;vertical-align:top">${cat.l}</td>
-        <td style="padding:3px 0;font-size:9pt;color:#999;text-decoration:line-through;vertical-align:top">${x(item.t)}</td>
+        <td style="padding:4px 10px 4px 0;color:#666;font-size:9pt;white-space:nowrap;vertical-align:top;border-bottom:1px solid #f5f5f5">${cat.l}</td>
+        <td style="padding:4px 0;font-size:9.5pt;vertical-align:top;border-bottom:1px solid #f5f5f5">${x(item.t||item.text||'')}${driveTag}</td>
       </tr>`);
     });
     if(note.trim()){
       aportadoRows.push(`<tr>
-        <td style="padding:3px 10px 6px 0;color:#888;font-size:8.5pt;white-space:nowrap;vertical-align:top;font-style:italic">↳ Nota ${cat.l}</td>
-        <td style="padding:3px 0 6px 0;font-size:8.5pt;color:#555;font-style:italic;border-bottom:1px solid #f0f0f0">${x(note)}</td>
+        <td style="padding:2px 10px 8px 0;color:#aaa;font-size:8.5pt;white-space:nowrap;vertical-align:top;font-style:italic"></td>
+        <td style="padding:2px 0 8px 0;font-size:8.5pt;color:#888;font-style:italic">✏️ ${x(note)}</td>
       </tr>`);
     }
   });
 
+  // Resumen N/P como una sola línea al pie de la sección aportada
+  const npSummary=Object.entries(npBycat).map(([cat,n])=>`${cat} (${n})`).join(', ');
+
+  // Pendientes reales (ni aportados ni N/P)
+  const pendRows=[];
+  CATS.forEach(cat=>{
+    if(cat.id==='extra')return;
+    const pending=all.filter(i=>i.c===cat.id&&!pr.has(i.id)&&!np.has(i.id));
+    pending.forEach(item=>{
+      pendRows.push({cat:cat.l,item});
+    });
+  });
+
   // ── Advertencias: pendientes relevantes ──
-  // Prioridad alta: items con w:true no marcados + items críticos no marcados
   const CRITICOS=['dni','cemp','sepe','ibi','bfis'];
   const warnings=[];
-  const np=progNP[cid]||new Set();
 
   // 1. Items marcados como advertencia (w:true) que faltan — excluir N/P
   all.filter(i=>i.w&&!pr.has(i.id)&&!np.has(i.id)).forEach(i=>{
@@ -759,10 +768,8 @@ function exportPDF(cid){
   <h2>✅ Documentación aportada</h2>
   ${aportadoRows.length
     ?`<table style="width:100%;border-collapse:collapse">${aportadoRows.join('')}</table>`
-    :`<p style="color:#999;font-size:9.5pt">Ningún documento marcado todavía.</p>`}
-
-  ${npRows.length?`<h2>⊘ No procede</h2>
-  <table style="width:100%;border-collapse:collapse">${npRows.join('')}</table>`:''}
+    :`<p style="color:#999;font-size:9.5pt;padding:6px 0">Ningún documento marcado todavía.</p>`}
+  ${npSummary?`<p style="font-size:8.5pt;color:#aaa;margin-top:8px;padding-top:6px;border-top:1px solid #f0f0f0">No procede: ${npSummary}</p>`:''}
 
   <h2>⚠️ Advertencias y pendientes</h2>
   <table style="width:100%;border-collapse:collapse">${wHtml}</table>
