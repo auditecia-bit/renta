@@ -635,8 +635,10 @@ function exportPDF(cid){
 
   // ── Documentos aportados (checked) agrupados por categoría ──
   const aportadoRows=[];
+  const npRows=[];
   CATS.forEach(cat=>{
     const checked=all.filter(i=>i.c===cat.id&&pr.has(i.id));
+    const npItems=all.filter(i=>i.c===cat.id&&(progNP[cid]||new Set()).has(i.id));
     const note=(c.catNotes||{})[cat.id]||'';
     checked.forEach(item=>{
       const key=driveKey(cid,item.id);
@@ -647,6 +649,12 @@ function exportPDF(cid){
       aportadoRows.push(`<tr>
         <td style="padding:4px 10px 4px 0;color:#666;font-size:9pt;white-space:nowrap;vertical-align:top">${cat.l}</td>
         <td style="padding:4px 0;font-size:9.5pt;vertical-align:top">${x(item.t)}${driveTag}</td>
+      </tr>`);
+    });
+    npItems.forEach(item=>{
+      npRows.push(`<tr>
+        <td style="padding:3px 10px 3px 0;color:#999;font-size:9pt;white-space:nowrap;vertical-align:top">${cat.l}</td>
+        <td style="padding:3px 0;font-size:9pt;color:#999;text-decoration:line-through;vertical-align:top">${x(item.t)}</td>
       </tr>`);
     });
     if(note.trim()){
@@ -661,35 +669,38 @@ function exportPDF(cid){
   // Prioridad alta: items con w:true no marcados + items críticos no marcados
   const CRITICOS=['dni','cemp','sepe','ibi','bfis'];
   const warnings=[];
+  const np=progNP[cid]||new Set();
 
-  // 1. Items marcados como advertencia (w:true) que faltan
-  all.filter(i=>i.w&&!pr.has(i.id)).forEach(i=>{
+  // 1. Items marcados como advertencia (w:true) que faltan — excluir N/P
+  all.filter(i=>i.w&&!pr.has(i.id)&&!np.has(i.id)).forEach(i=>{
     warnings.push({nivel:'alta',txt:i.t,det:i.d});
   });
 
-  // 2. Documentos críticos sin marcar
-  all.filter(i=>CRITICOS.includes(i.id)&&!pr.has(i.id)).forEach(i=>{
+  // 2. Documentos críticos sin marcar — excluir N/P
+  all.filter(i=>CRITICOS.includes(i.id)&&!pr.has(i.id)&&!np.has(i.id)).forEach(i=>{
     warnings.push({nivel:'alta',txt:i.t,det:i.d});
   });
 
-  // 3. Categorías con 0% de aportación (si tiene items)
+  // 3. Categorías con 0% de aportación real (ignorar N/P)
   CATS.forEach(cat=>{
     if(cat.id==='extra')return;
     const ci=all.filter(i=>i.c===cat.id);
     if(ci.length===0)return;
-    const cc=ci.filter(i=>pr.has(i.id)).length;
-    if(cc===0){
+    const cc=ci.filter(i=>pr.has(i.id)||np.has(i.id)).length;
+    const real=ci.filter(i=>pr.has(i.id)).length;
+    if(cc===ci.length)return; // todos cubiertos (aportados o N/P)
+    if(real===0&&cc===0){
       warnings.push({nivel:'media',txt:`Categoría "${cat.l}" — ningún documento aportado`,det:`${ci.length} documentos pendientes en esta sección.`});
     }
   });
 
-  // 4. Items no marcados con Drive adjunto en otros items de su categoría (señal de que la categoría está activa pero el item se olvidó)
+  // 4. Items sueltos pendientes en categorías activas — excluir N/P
   CATS.forEach(cat=>{
     if(cat.id==='extra')return;
     const ci=all.filter(i=>i.c===cat.id);
     const anyDrive=ci.some(i=>(driveFiles[driveKey(cid,i.id)]||[]).length>0);
     if(anyDrive){
-      ci.filter(i=>!pr.has(i.id)&&!i.w&&!CRITICOS.includes(i.id)).forEach(i=>{
+      ci.filter(i=>!pr.has(i.id)&&!np.has(i.id)&&!i.w&&!CRITICOS.includes(i.id)).forEach(i=>{
         warnings.push({nivel:'baja',txt:i.t,det:i.d});
       });
     }
@@ -749,6 +760,9 @@ function exportPDF(cid){
   ${aportadoRows.length
     ?`<table style="width:100%;border-collapse:collapse">${aportadoRows.join('')}</table>`
     :`<p style="color:#999;font-size:9.5pt">Ningún documento marcado todavía.</p>`}
+
+  ${npRows.length?`<h2>⊘ No procede</h2>
+  <table style="width:100%;border-collapse:collapse">${npRows.join('')}</table>`:''}
 
   <h2>⚠️ Advertencias y pendientes</h2>
   <table style="width:100%;border-collapse:collapse">${wHtml}</table>
